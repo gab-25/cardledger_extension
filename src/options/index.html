@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CardLedger Sync — Options</title>
+    <link rel="stylesheet" href="../ui/style.css" />
+    <style>main { max-width: 560px; }</style>
+  </head>
+  <body>
+    <main>
+      <h1>CardLedger Sync — Options</h1>
+      <form id="form" class="card">
+        <label for="url">CardLedger URL</label>
+        <input id="url" type="url" required placeholder="https://ledger.example.com" />
+        <p class="muted small">The address you open CardLedger at. A new address asks for permission to access it.</p>
+        <label>Cardmarket games</label>
+        <p class="muted small">Their Cardmarket stock and orders are read on every Cardmarket sync (games with changes
+          to push are always included).</p>
+        <div id="games" class="gap"></div>
+        <p></p>
+        <button class="primary" type="submit">Save</button>
+        <span id="saved" class="small"></span>
+      </form>
+    </main>
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>

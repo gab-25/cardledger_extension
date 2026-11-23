@@ -1,0 +1,14 @@
+<!doctype html>
+<html><body>
+<header><div id="account-dropdown"><span class="username">LedgerShop</span></div></header>
+<main>
+  <form id="TrackingNumberForm" method="post" action="/en/Magic/PostGetAction/Order_SetTrackingNumber">
+    <input type="hidden" name="__cmtkn" value="tok-ship-1"><input type="hidden" name="idOrder" value="1172001">
+    <input type="text" name="trackingNumber" value=""><button type="submit">Save</button>
+  </form>
+  <form id="ConfirmShippingForm" method="post" action="/en/Magic/PostGetAction/Order_Send">
+    <input type="hidden" name="__cmtkn" value="tok-ship-1"><input type="hidden" name="idOrder" value="1172001">
+    <button type="submit">Mark as sent</button>
+  </form>
+</main>
+</body></html>

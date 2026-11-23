@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><title>Export stock | Cardmarket</title></head>
+<body>
+<header><div id="account-dropdown"><a class="dropdown-toggle" href="/en/Magic/Account"><span class="username">LedgerShop</span></a></div></header>
+<main>
+  <h1>Export your stock</h1>
+  <form id="StockExportForm" method="post" action="/en/Magic/PostGetAction/Stock_Export">
+    <input type="hidden" name="__cmtkn" value="tok-export-1">
+    <select name="idExpansion"><option value="0" selected>All expansions</option></select>
+    <input type="checkbox" name="includeComments" value="1" checked>
+    <button type="submit">Export</button>
+  </form>
+</main>
+</body></html>

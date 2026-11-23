@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><title>Import stock | Cardmarket</title></head>
+<body>
+<header><div id="account-dropdown"><span class="username">LedgerShop</span></div></header>
+<main>
+  <form id="StockImportForm" method="post" enctype="multipart/form-data" action="/en/Magic/PostGetAction/Stock_Import">
+    <input type="hidden" name="__cmtkn" value="tok-import-7">
+    <input type="file" name="csvFile" accept=".csv">
+    <input type="radio" name="mode" value="add">
+    <input type="radio" name="mode" value="replace" checked>
+    <button type="submit">Upload</button>
+  </form>
+</main>
+</body></html>
