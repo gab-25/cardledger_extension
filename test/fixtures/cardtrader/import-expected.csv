@@ -1,0 +1,6 @@
+id,blueprint_id,cardmarket_id,game_id,expansion_code,collector_number,name,quantity,price,condition,language,foil,user_data_field
+,,576041,1,mh2,138,"Ragavan, Nimble Pilferer",2,48.00,Near Mint,jp,true,cardledger:101
+,7001,,5,sv1,025,Pikachu,1,1.50,Slightly Played,it,false,cardledger:102
+,,,1,mh2,,Modern Horizons 2 Booster Box,3,265.00,,en,,cardledger:103
+5002,,,,,,,1,70.00,Played,it,false,cardledger:104
+5003,,,,,,,0,19.20,Mint,jp,true,cardledger:105

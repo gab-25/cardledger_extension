@@ -1,0 +1,11 @@
+<!doctype html>
+<html><head><title>Log in | CardTrader</title></head>
+<body>
+<header class="navbar"><a href="/users/sign_in">Log in</a></header>
+<main>
+  <form id="new_user" action="/users/sign_in" method="post">
+    <input type="hidden" name="authenticity_token" value="x">
+    <input type="email" name="user[email]"><input type="password" name="user[password]">
+  </form>
+</main>
+</body></html>
