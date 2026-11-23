@@ -4,17 +4,14 @@
 import { ApiError, type CardLedgerClient } from "./api/cardledger";
 import { errorText } from "./lib/util";
 import { runCardmarket, shipCardmarket, type AgentCall } from "./markets/cardmarket/adapter";
-import { CardTraderClient } from "./markets/cardtrader/client";
-import { runCardTrader, shipCardTrader } from "./markets/cardtrader/adapter";
+import { runCardTrader, shipCardTrader, type CtAgentCall } from "./markets/cardtrader/adapter";
 import { buildReport, startRun, summarize, type RunSummary } from "./report";
 import type { MarketCode, MarketRunOutput, ReportResponse } from "./types";
 
-export const NO_CT_TOKEN = "No CardTrader token in CardLedger: save it on the Account page, then sync again.";
-
 export interface SyncDeps {
   api: CardLedgerClient;
-  /** CardTrader client for a token (tests inject a mocked fetch). */
-  cardtrader: (token: string) => CardTraderClient;
+  /** The agent of the user's www.cardtrader.com tab (throws when there is none). */
+  cardtrader: () => Promise<CtAgentCall>;
   /** The agent of the user's cardmarket.com tab (throws when there is none). */
   cardmarket: () => Promise<AgentCall>;
   cmGames: string[];
@@ -29,12 +26,9 @@ export async function runSync(market: MarketCode, deps: SyncDeps): Promise<RunSu
   let error: string | null = null;
   try {
     if (market === "ct") {
-      const status = await deps.api.status();
-      const token = await deps.api.cardtraderToken();
-      if (!token) throw new Error(NO_CT_TOKEN);
+      const agent = await deps.cardtrader();
       const plan = await deps.api.plan("ct");
-      const lastSync = status.markets.find((m) => m.code === "ct")?.last_sync ?? null;
-      await runCardTrader({ client: deps.cardtrader(token), plan, lastSync }, output);
+      await runCardTrader({ agent, plan }, output);
     } else {
       const agent = await deps.cardmarket();
       const plan = await deps.api.plan("cm");
@@ -69,9 +63,7 @@ export interface ShipRequest {
 /** Mark an order shipped on its market, then tell CardLedger. */
 export async function runShip(req: ShipRequest, deps: SyncDeps): Promise<void> {
   if (req.market === "ct") {
-    const token = await deps.api.cardtraderToken();
-    if (!token) throw new Error(NO_CT_TOKEN);
-    await shipCardTrader(deps.cardtrader(token), req.market_order_id, req.tracking_code);
+    await shipCardTrader(await deps.cardtrader(), req.market_order_id, req.tracking_code);
   } else {
     await shipCardmarket(await deps.cardmarket(), req.game || "mtg", req.market_order_id, req.tracking_code);
   }

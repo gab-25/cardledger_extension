@@ -115,17 +115,6 @@ export class CardLedgerClient {
     return this.request("GET", "status/");
   }
 
-  /** The user's CardTrader token saved in CardLedger, or null when there is none (404). */
-  async cardtraderToken(): Promise<string | null> {
-    try {
-      const data = await this.request<{ token: string }>("GET", "cardtrader-token/");
-      return data.token || null;
-    } catch (exc) {
-      if (exc instanceof ApiError && exc.status === 404) return null;
-      throw exc;
-    }
-  }
-
   plan(market: MarketCode): Promise<Plan> {
     return this.request("GET", `plan/?market=${market}`);
   }

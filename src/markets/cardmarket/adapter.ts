@@ -5,12 +5,13 @@
 
 import type { MarketRunOutput, OrderRow, Plan, StockRow } from "../../types";
 import { errorText } from "../../lib/util";
+import type { AgentCall as AnyAgentCall } from "../tab";
 import type { AgentRequest } from "./agent";
 import { CM_GAMES, buildImportCsv } from "./format";
 import { reconcile, splitPlan } from "./plan";
 
 /** Sends one request to the agent and returns its value (throws its error). */
-export type AgentCall = <T>(req: AgentRequest) => Promise<T>;
+export type AgentCall = AnyAgentCall<AgentRequest>;
 
 export const NOT_LOGGED_IN = "Not logged in to Cardmarket: log in on cardmarket.com in this browser and sync again.";
 

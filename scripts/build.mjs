@@ -43,6 +43,7 @@ await build({
 const contentScripts = {
   "content-cardledger": `${src}/content/cardledger.ts`,
   "cardmarket-agent": `${src}/markets/cardmarket/agent.ts`,
+  "cardtrader-agent": `${src}/markets/cardtrader/agent.ts`,
 };
 for (const [name, entry] of Object.entries(contentScripts)) {
   await build({

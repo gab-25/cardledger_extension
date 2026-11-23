@@ -3,20 +3,18 @@
 Syncs your [CardLedger](https://github.com/gab-25/cardledger_core) listings and orders with **Cardmarket** and
 **CardTrader**, from your own browser, only when you press **Sync**.
 
-- **CardTrader**: the extension calls CardTrader's official API v2 with your CardTrader token (saved in CardLedger and
-  fetched from it at sync time). It publishes, updates and removes your listings, and reads back your products and
-  orders.
-- **Cardmarket**: there is no API to use, so the extension works through your open, logged-in cardmarket.com tab:
-  it downloads your stock export, uploads a stock import CSV with the changes, reads your Paid and Sent sales, and
-  marks orders as sent. It uses the browser's own session: your Cardmarket password and cookies are never read or
-  stored by the extension.
+- **Cardmarket**: the extension works through your open, logged-in cardmarket.com tab: it downloads your stock
+  export, uploads a stock import CSV with the changes, reads your Paid and Sent sales, and marks orders as sent.
+- **CardTrader**: the same way, through your open, logged-in www.cardtrader.com tab: it downloads your inventory
+  export, uploads an inventory import CSV with the changes, reads your paid and sent orders, and marks orders shipped
+  (with the tracking code) on the order page. No CardTrader API token is used or stored anywhere.
 
-Nothing runs in the background: no timers, no polling. Requests are sequential, with at least 1.5 s between
-Cardmarket pages.
+Both use the browser's own session: your market passwords and cookies are never read or stored by the extension.
+Nothing runs in the background: no timers, no polling. Requests are sequential, with at least 1.5 s between pages.
 
-> **Status:** the Cardmarket file formats and page structure are educated guesses until they are checked against real
-> samples. See [Finalising the Cardmarket formats](#finalising-the-cardmarket-formats) before syncing Cardmarket for
-> real. CardTrader follows exactly what CardLedger's server already does.
+> **Status:** the Cardmarket and CardTrader file formats and page structures are educated guesses until they are
+> checked against real samples. See [Finalising the Cardmarket formats](#finalising-the-cardmarket-formats) and
+> [Finalising the CardTrader formats](#finalising-the-cardtrader-formats) before syncing for real.
 
 ## Install
 
@@ -42,8 +40,9 @@ After pulling changes, `npm run build` again and press the reload icon on the ex
 2. **Pair**: in CardLedger, open *Account → Browser extension* and create a pairing code (valid 10 minutes). Open
    the extension popup, type the code, press **Pair**. The extension stores the token it receives in
    `chrome.storage.local`; revoke it from the same Account page at any time (the extension then asks to pair again).
-3. **CardTrader**: save your CardTrader API token in CardLedger (Account). The extension fetches it at each sync.
-4. **Cardmarket**: log in on cardmarket.com in a normal tab and leave it open while syncing. In the options, tick
+3. **CardTrader**: log in on www.cardtrader.com in a normal tab (the popup's *Open CardTrader* opens one) and leave
+   it open while syncing.
+4. **Cardmarket**: log in on cardmarket.com in a normal tab (*Open Cardmarket*) and leave it open while syncing. In the options, tick
    the games whose Cardmarket stock and orders you want read on each sync (games with changes to push are always
    included).
 
@@ -61,6 +60,9 @@ Each run:
 3. reads back the market's stock and orders;
 4. posts one report (`POST /api/extension/report/`) with a fresh `run_id`: always, also when the run fails (then
    with `error` and whatever was done before the failure).
+
+CardTrader's created listings carry `cardledger:<listing id>` in the product's free field (`user_data_field`), so the
+next export tells which product is which; the blueprint CardTrader picked is reported back as `ct_blueprint_id`.
 
 Marking an order shipped (with its tracking code) is done by the extension too, then confirmed to CardLedger with
 `POST /api/extension/shipped/`.
@@ -104,6 +106,29 @@ tracking numbers) and never copy request headers: they contain your session cook
 | 9 | The stock page of one article (only if Amount 0 can't remove through the import) | Stock → an article | new fixture | `URLS.article`, `SEL.articleRemoveForm` |
 
 Also note the game names in the URLs of each game you sell (`CM_GAMES`).
+
+## Finalising the CardTrader formats
+
+Same procedure for **`src/markets/cardtrader/format.ts`** and the fixtures in `test/fixtures/cardtrader/` (capture
+from your own seller account, redact personal data, never copy request headers). CardTrader's pages are partly
+rendered by scripts: copy the outerHTML from *Elements* as above, and also look in DevTools → *Network* (filter
+*Fetch/XHR*) for JSON the page loads or sends — if the order data or the ship/tracking actions go through JSON
+endpoints, note their URL, method, body and response (`URLS.orderTrackingJson`, `URLS.orderShipJson`,
+`SEL.order.json`).
+
+| # | Sample | Where | Fixture | Checks |
+| --- | --- | --- | --- | --- |
+| 1 | Inventory export CSV (a few rows: one foil, one non-English, one sealed product, one created by the extension) | Sell → Inventory → Export | `inventory-export.csv` | delimiter, header names (`STOCK_COLUMNS`): product id, `blueprint_id`, Cardmarket id, expansion code, collector number, condition names, language codes, foil flag, price in euros or cents, whether `user_data_field` is exported |
+| 2 | Export page, before and after requesting an export (or the direct download) | Same page | `export-page.html`, `export-ready.html` | `URLS.inventoryExport`, `SEL.exportForm`, whether the file downloads right away or appears later as a link (`SEL.exportDownload`) |
+| 3 | Import page + its help/template (and the sample CSV if it offers one) | Sell → Inventory → Import from file | `import-page.html`, `import-expected.csv` | `URLS.inventoryImport`, form and file field, options to send (`IMPORT_OVERRIDES`, e.g. update vs add), `IMPORT_HEADER`, which columns identify a card (blueprint id, Cardmarket id, expansion code + number, name), whether a row with the product `id` replaces the quantity, whether quantity 0 removes (`DELETE_STRATEGY`) |
+| 4 | The page after an import, successful and refused; how long until the inventory shows it | After uploading a 1-row file with a cheap card | `import-done.html`, `import-refused.html` | `SEL.alertSuccess` / `SEL.alertError`, `IMPORT_SETTLE_MS` (or a job/status page to poll) |
+| 5 | Orders as seller, paid and sent, with at least one order (and a second page if any) | Orders → Sold, filtered by state | `orders-paid.html` | `URLS.orders` (the state filter values and `page` parameter), `SEL.ordersOrderLink` |
+| 6 | An order page, one paid and one sent | Click an order | `order-paid.html` (embedded JSON), `order-sent.html` (HTML) | whether the order is embedded as JSON (`SEL.order.json`; its fields vs `CtOrderJson`) or only HTML (`SEL.order.*`: buyer, address parts, shipping method, tracking, dates, totals, item rows), state names (`CT_STATES`) |
+| 7 | Setting a tracking code and marking shipped on a paid order | Paid order page | `order-ship.html` | HTML forms (`SEL.ship.*`, field names) or the JSON requests the buttons make (URL, method, body, `X-CSRF-Token`) |
+| 8 | Any page while logged out, and where the login redirect goes | Log out, open www.cardtrader.com | `logged-out.html` | `SEL.loginForm`, `isSignInUrl`, and `SEL.username` on the logged-in pages above |
+| 9 | A product's page with its delete button (only if quantity 0 can't remove through the import) | Inventory → a product | new fixture | `URLS.product`, `SEL.productRemoveForm` |
+
+Also note CardTrader's game ids (`CT_GAMES`: the game filter's option values, or the game column of the export).
 
 ## Development
 

@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><title>Order 20261121-AB12 | CardTrader</title></head>
+<body>
+<header class="navbar"><div class="user-menu"><a href="/en/users/me" data-username="LedgerShop"><span class="username">LedgerShop</span></a></div></header>
+<main>
+  <form id="tracking-code-form" method="post" action="/en/orders/880001/tracking_code">
+    <input type="hidden" name="authenticity_token" value="tok-ship-1"><input type="hidden" name="_method" value="patch">
+    <input type="text" name="order[tracking_code]" value=""><button type="submit">Save</button>
+  </form>
+  <form id="ship-order-form" method="post" action="/en/orders/880001/ship">
+    <input type="hidden" name="authenticity_token" value="tok-ship-1"><input type="hidden" name="_method" value="put">
+    <button type="submit">Mark as shipped</button>
+  </form>
+</main>
+</body></html>

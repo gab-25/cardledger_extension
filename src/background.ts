@@ -1,11 +1,11 @@
-// Service worker: the only part that talks to CardLedger, CardTrader and the Cardmarket tab. It reacts to messages
-// (popup, options, CardLedger page bridge) and nothing else: no alarms, no polling, no work on startup besides
+// Service worker: the only part that talks to CardLedger and to the market tabs (Cardmarket, CardTrader). It reacts to
+// messages (popup, options, CardLedger page bridge) and nothing else: no alarms, no polling, no work on startup besides
 // registering the page bridge for the configured CardLedger origin.
 
 import { ApiError, CardLedgerClient } from "./api/cardledger";
 import { errorText } from "./lib/util";
 import { connectAgent, findCardmarketTab, NO_TAB } from "./markets/cardmarket/tab";
-import { CardTraderClient } from "./markets/cardtrader/client";
+import { connectAgent as connectCtAgent, findCardTraderTab, NO_TAB as NO_CT_TAB } from "./markets/cardtrader/tab";
 import type { Request, Response, State } from "./messages";
 import { getAuth, getLastRuns, getSettings, hostPattern, saveAuth, saveLastRun } from "./storage";
 import { runShip, runSync, type SyncDeps } from "./sync";
@@ -23,7 +23,11 @@ async function deps(): Promise<SyncDeps> {
   const settings = await getSettings();
   return {
     api: await client(),
-    cardtrader: (token) => new CardTraderClient(token),
+    cardtrader: async () => {
+      const tab = await findCardTraderTab();
+      if (tab?.id === undefined) throw new Error(NO_CT_TAB);
+      return connectCtAgent(tab.id);
+    },
     cardmarket: async () => {
       const tab = await findCardmarketTab();
       if (tab?.id === undefined) throw new Error(NO_TAB);

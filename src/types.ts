@@ -65,6 +65,8 @@ export interface ChangeResult {
   listing_id: number;
   ok: boolean;
   market_listing_id?: string;
+  /** CardTrader: the blueprint the market chose for the listing, when CardLedger didn't know it. */
+  ct_blueprint_id?: number | null;
   error?: string;
 }
 

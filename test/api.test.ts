@@ -29,13 +29,6 @@ describe("CardLedgerClient", () => {
     expect(calls[1]!.url.toString()).toBe(`${BASE}/api/extension/plan/?market=cm`);
   });
 
-  it("returns null when there is no CardTrader token", async () => {
-    const { fetch } = jsonFetch({});
-    expect(await new CardLedgerClient({ baseUrl: BASE, token: "t", fetch }).cardtraderToken()).toBeNull();
-    const ok = jsonFetch({ "GET /api/extension/cardtrader-token/": () => ({ token: "ct-123" }) });
-    expect(await new CardLedgerClient({ baseUrl: BASE, token: "t", fetch: ok.fetch }).cardtraderToken()).toBe("ct-123");
-  });
-
   it("posts reports and shipped notices as JSON", async () => {
     const { fetch, calls } = jsonFetch({
       "POST /api/extension/report/": () => ({ applied: 1, conflicts: 0, orders_new: 0, unmatched: [] }),

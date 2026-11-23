@@ -427,28 +427,6 @@ export function parseOrderPage(doc: Document, orderId: string, state: OrderState
   };
 }
 
-/**
- * The fields of a form as Cardmarket would post them (hidden inputs such as the anti-CSRF token included), with
- * overrides. ASSUMPTION: Cardmarket's forms are plain HTML forms posted to their action with the session cookie.
- */
-export function formData(form: HTMLFormElement, overrides: Record<string, string | Blob> = {}, fileName = "stock.csv"): FormData {
-  const data = new FormData();
-  for (const el of form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")) {
-    if (!el.name || el.disabled) continue;
-    if (el instanceof HTMLInputElement) {
-      if (el.type === "file" || el.type === "submit" || el.type === "button") continue;
-      if ((el.type === "checkbox" || el.type === "radio") && !el.checked) continue;
-    }
-    data.append(el.name, el.value);
-  }
-  for (const [k, v] of Object.entries(overrides)) {
-    data.delete(k);
-    if (typeof v === "string") data.append(k, v);
-    else data.append(k, v, fileName);
-  }
-  return data;
-}
-
-export function formAction(form: HTMLFormElement, pageUrl: string): string {
-  return new URL(form.getAttribute("action") || pageUrl, pageUrl).toString();
-}
+// ASSUMPTION: Cardmarket's forms are plain HTML forms posted to their action with the session cookie (the generic
+// helpers live in lib/forms.ts).
+export { formAction, formData } from "../../lib/forms";

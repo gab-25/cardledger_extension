@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { CardLedgerClient } from "../src/api/cardledger";
 import type { AgentCall } from "../src/markets/cardmarket/adapter";
-import { CardTraderClient } from "../src/markets/cardtrader/client";
+import type { CtAgentCall } from "../src/markets/cardtrader/adapter";
 import { buildReport, startRun, summarize } from "../src/report";
-import { NO_CT_TOKEN, runShip, runSync, type SyncDeps } from "../src/sync";
+import { runShip, runSync, type SyncDeps } from "../src/sync";
 import type { Report } from "../src/types";
 import { change, jsonFetch } from "./helpers";
 
@@ -28,14 +28,9 @@ function deps(api: CardLedgerClient, extra: Partial<SyncDeps> = {}): SyncDeps {
   let n = 0;
   return {
     api,
-    cardtrader: (token) => new CardTraderClient(token, {
-      fetch: jsonFetch({
-        "GET /api/v2/products/export": () => [],
-        "GET /api/v2/orders": () => [],
-        "DELETE /api/v2/products/5": () => ({}),
-      }).fetch,
-      sleep: async () => undefined,
-    }),
+    cardtrader: async () => {
+      throw new Error("no CardTrader tab");
+    },
     cardmarket: async () => {
       throw new Error("no tab");
     },
@@ -64,29 +59,35 @@ describe("report", () => {
 });
 
 describe("runSync", () => {
-  it("CardTrader: applies the plan and reports results, stock and orders", async () => {
+  it("CardTrader: applies the plan in the CardTrader tab and reports results, stock and orders", async () => {
     const del = change({ action: "delete", market_listing_id: "5" });
     const { api, reports, calls } = ledger({
-      "GET /api/extension/cardtrader-token/": () => ({ token: "ct" }),
       "GET /api/extension/plan/?market=ct": () => ({ market: "ct", changes: [del] }),
     });
-    const summary = await runSync("ct", deps(api));
+    const exports = [[{ market_listing_id: "5", tag: "" }], []];
+    const agent: CtAgentCall = async <T,>(req: { cmd: string }) => {
+      if (req.cmd === "whoami") return { username: "CtShop" } as T;
+      if (req.cmd === "exportInventory") return exports.shift() as T;
+      if (req.cmd === "importInventory") return { message: null } as T;
+      return [] as T;
+    };
+    const summary = await runSync("ct", deps(api, { cardtrader: async () => agent }));
     expect(calls.map((c) => `${c.method} ${c.url.pathname}${c.url.search}`)).toEqual([
-      "GET /api/extension/status/", "GET /api/extension/cardtrader-token/", "GET /api/extension/plan/?market=ct", "POST /api/extension/report/",
+      "GET /api/extension/plan/?market=ct", "POST /api/extension/report/",
     ]);
     expect(reports).toEqual([{
       run_id: "run-1", market: "ct", started_at: NOW.toISOString(), finished_at: NOW.toISOString(),
       results: [{ listing_id: del.listing_id, ok: true, market_listing_id: "5" }], stock: [], orders: [],
     }]);
-    expect(summary).toMatchObject({ ok: true, run_id: "run-1", published: 1, response: { applied: 1 } });
+    expect(summary).toMatchObject({ ok: true, run_id: "run-1", published: 1, handle: "CtShop", response: { applied: 1 } });
   });
 
   it("reports a failed run too, with its error", async () => {
     const { api, reports } = ledger();
     const summary = await runSync("ct", deps(api));
     expect(reports).toHaveLength(1);
-    expect(reports[0]).toMatchObject({ run_id: "run-1", market: "ct", results: [], error: NO_CT_TOKEN });
-    expect(summary).toMatchObject({ ok: false, error: NO_CT_TOKEN });
+    expect(reports[0]).toMatchObject({ run_id: "run-1", market: "ct", results: [], error: "no CardTrader tab" });
+    expect(summary).toMatchObject({ ok: false, error: "no CardTrader tab" });
 
     const cm = ledger();
     await runSync("cm", deps(cm.api));
@@ -123,5 +124,18 @@ describe("runShip", () => {
     await runShip({ market: "cm", market_order_id: "77", tracking_code: " RR1 ", game: "pokemon" }, deps(api, { cardmarket: async () => agent }));
     expect(seen[1]).toEqual({ cmd: "markShipped", game: "pokemon", orderId: "77", trackingCode: " RR1 " });
     expect(calls.at(-1)!.body).toEqual({ market: "cm", market_order_id: "77", tracking_code: "RR1" });
+  });
+
+  it("marks shipped on CardTrader's order page, then tells CardLedger", async () => {
+    const seen: unknown[] = [];
+    const agent: CtAgentCall = async <T,>(req: { cmd: string }) => {
+      seen.push(req);
+      return (req.cmd === "whoami" ? { username: "CtShop" } : undefined) as T;
+    };
+    const { api, calls } = ledger({ "POST /api/extension/shipped/": () => ({}) });
+    await runShip({ market: "ct", market_order_id: "880001", tracking_code: "RR2 " }, deps(api, { cardtrader: async () => agent }));
+    expect(seen[1]).toEqual({ cmd: "markShipped", orderId: "880001", trackingCode: "RR2 " });
+    expect(calls.map((c) => c.url.pathname)).toEqual(["/api/extension/shipped/"]);
+    expect(calls[0]!.body).toEqual({ market: "ct", market_order_id: "880001", tracking_code: "RR2" });
   });
 });

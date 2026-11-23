@@ -10,7 +10,7 @@ export function manifest(version, defaultUrlJson) {
   const defaultUrl = JSON.parse(defaultUrlJson);
   const hosts = new Set([
     "https://www.cardmarket.com/*",
-    "https://api.cardtrader.com/*",
+    "https://www.cardtrader.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
     hostPattern(defaultUrl),
@@ -24,7 +24,7 @@ export function manifest(version, defaultUrlJson) {
     action: { default_title: "CardLedger Sync", default_popup: "popup/index.html" },
     options_page: "options/index.html",
     background: { service_worker: "background.js", type: "module" },
-    // storage: token and settings; scripting: the Cardmarket agent and the CardLedger page bridge (registered for
+    // storage: token and settings; scripting: the Cardmarket and CardTrader agents and the CardLedger page bridge (registered for
     // the configured CardLedger origin at runtime). No alarms: nothing runs unless the user asks.
     permissions: ["storage", "scripting"],
     host_permissions: [...hosts],
