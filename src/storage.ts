@@ -4,9 +4,8 @@
 import type { MarketCode, User } from "./types";
 import type { RunSummary } from "./report";
 
-export const DEFAULT_URL: string = import.meta.env.VITE_CARDLEDGER_URL || "http://localhost:5173";
-
 export interface Settings {
+  /** The CardLedger URL, set by the user in the popup's Settings: "" until then (there is no built-in default). */
   baseUrl: string;
 }
 
@@ -24,7 +23,7 @@ export interface Stored {
   lastRuns?: Partial<Record<MarketCode, RunSummary>>;
 }
 
-export const DEFAULT_SETTINGS: Settings = { baseUrl: DEFAULT_URL };
+export const DEFAULT_SETTINGS: Settings = { baseUrl: "" };
 
 async function get<K extends keyof Stored>(key: K): Promise<Stored[K]> {
   const data = (await chrome.storage.local.get(key)) as Stored;

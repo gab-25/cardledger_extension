@@ -1,6 +1,6 @@
 // Popup, as the "Browser extension · popup" mockups of the CardLedger Pro design canvas: a header (settings), which
 // tab you are on, one card per market (only the market of the active tab can sync), and two panels of their own:
-// Settings (the CardLedger URL, unpairing) and pairing.
+// Settings (the CardLedger URL, unpairing) and pairing. Until the CardLedger URL is set there is only Settings.
 
 import { normalizeBaseUrl } from "../api/cardledger";
 import { MARKET_ORIGINS, marketOfUrl } from "../markets/hosts";
@@ -226,12 +226,16 @@ function settingsView(state: State) {
   const user = state.status?.user ?? state.auth?.user;
   const name = user?.username || "?";
   const since = state.auth?.pairedAt ? ` · since ${new Date(state.auth.pairedAt).toLocaleDateString()}` : "";
+  const configured = !!state.baseUrl;
   return [
     h("header", { class: "bar top" },
-      h("button", { class: "icon ink", "aria-label": "Back", title: "Back", onclick: () => show("main") }, icon(BACK)),
+      configured
+        ? h("button", { class: "icon ink", "aria-label": "Back", title: "Back", onclick: () => show("main") }, icon(BACK))
+        : null,
       h("span", { class: "title" }, h("h1", {}, "Settings"))),
     h("div", { class: "body" },
       flash(),
+      configured ? null : h("div", { class: "banner info" }, h("b", {}, "Set your CardLedger URL"), h("span", {}, "Enter the address you open CardLedger at, then pair this browser.")),
       form,
       state.paired
         ? h("section", { class: "panel", "aria-label": "This browser" },
@@ -249,7 +253,7 @@ function settingsView(state: State) {
 // --- render and actions ---------------------------------------------------------------------------------------------
 
 function render(state: State) {
-  const parts = view === "settings" ? settingsView(state) : state.paired ? mainView(state) : pairView(state);
+  const parts = view === "settings" || !state.baseUrl ? settingsView(state) : state.paired ? mainView(state) : pairView(state);
   app.replaceChildren(...parts);
 }
 
