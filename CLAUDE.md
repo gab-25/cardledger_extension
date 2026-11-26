@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Chrome MV3 extension that syncs CardLedger (backend: sibling repo cardledger_core, Django; UI: cardledger_ui) with
 Cardmarket ("cm") and CardTrader ("ct"). The server never talks to the markets: the extension fetches a plan from
-CardLedger, applies it on the market inside the user's own logged-in tab (both markets work the same way: inventory
-CSV export/import, orders pages, ship on the order page), and posts back a report. There is no CardTrader API token
+CardLedger, applies it on the market inside the user's own logged-in tab (Cardmarket: "My Offers" pages, sell form, edit
+modal and +/- AJAX actions — a private account has no stock CSV; CardTrader: "My items" JSON, "Sell via spreadsheet"
+import, the edit panel's JSON PATCH/DELETE; both: orders pages, ship on the order page), and posts back a report. There is no CardTrader API token
 anywhere in the system. The CardLedger side of the
 contract is `/api/extension/*` (token auth `Authorization: Token <token>`, obtained by pairing); its types are in
 `src/types.ts`.
@@ -45,27 +46,28 @@ VITE_CARDLEDGER_URL=https://… npm run build       # default CardLedger URL (el
 - `src/report.ts`: report building and the `RunSummary` shown in the popup / sent to the page.
 - `src/api/cardledger.ts`: typed client of `/api/extension/*`; errors → `ApiError` (`code`, `fields`, `unauthorized`).
 - `src/markets/cardmarket/`:
-  - **`format.ts` — the assumptions module**: every Cardmarket URL, CSV column, code mapping, selector, label and
-    date/money format. Nothing about Cardmarket's formats may live elsewhere. Unverified until real samples are
-    captured (README, "Finalising the Cardmarket formats"); when correcting it, replace the fixtures in
-    `test/fixtures/cardmarket/` with the real (redacted) samples first, then fix until tests pass.
+  - **`format.ts` — the formats module**: every Cardmarket URL, selector, form field, code mapping, label and
+    date/money format. Nothing about Cardmarket's formats may live elsewhere. Blocks are `VERIFIED (date)` (real
+    fixture) or `ASSUMPTION` (README, "Finalising the Cardmarket formats"); when correcting one, replace the fixture in
+    `test/fixtures/cardmarket/` with the real (redacted) page first — as the server sends it (`fetch`), not as
+    rendered — then fix until tests pass.
   - `agent.ts`: runs in the cardmarket.com tab (built as IIFE, injected with `chrome.scripting.executeScript`,
     exposes `window.__cardledgerAgent.handle(request)`); does the page work (paced fetch, DOMParser, form posts).
     Service workers have no DOMParser: all HTML parsing happens here.
-  - `plan.ts`: pure: splits the plan per game, verifies each change by diffing the stock export before/after
-    the import (Cardmarket gives no per-row result).
+  - `plan.ts`: pure: splits the plan per game, verifies each change by diffing the stock ("My Offers") read
+    before/after the page actions.
   - `adapter.ts`: background-side orchestration over an `AgentCall`; `tab.ts` finds the tab and injects the agent.
 - `src/markets/cardtrader/`: the same layout as Cardmarket, for a www.cardtrader.com tab.
-  - **`format.ts` — the assumptions module**: every CardTrader URL, CSV column, code mapping, game id, selector,
-    label, the embedded order JSON shape and the same-origin JSON endpoints (used only when the order page has no
-    form). Unverified (README, "Finalising the CardTrader formats"); fix it from real samples the same way, fixtures
-    in `test/fixtures/cardtrader/`.
+  - **`format.ts` — the formats module**: every CardTrader URL, JSON shape, import column, code mapping, game id,
+    selector and label. `VERIFIED (date)` / `ASSUMPTION` blocks as for Cardmarket (README, "Finalising the
+    CardTrader formats"); fixtures in `test/fixtures/cardtrader/` (real ones: redacted answers).
   - `agent.ts`: IIFE content script, `window.__cardledgerCtAgent.handle(request)`; Rails-style forms
     (`authenticity_token`, `_method`) and, for JSON calls, the page's `csrf-token` meta as `X-CSRF-Token`.
-  - `plan.ts`: pure; one import for the whole inventory (not per game). Created products carry
-    `user_data_field = cardledger:<listing id>`, which identifies them in the next export (fallback: a new product of
-    the same blueprint / Cardmarket id / set + number or name, condition, language, foil). Results and stock carry
-    `ct_blueprint_id` when CardTrader picked one CardLedger didn't know.
+  - `plan.ts`: pure; creates go in one import per game (never `replace_stock`), updates/deletes one JSON call each.
+    Created products carry `user_data_field = cardledger:<listing id>` (only `/products/<id>.json` returns it), which
+    identifies them (fallback: a new product of the same blueprint / Cardmarket id / set + number or name,
+    condition, language, foil). "My items" lags: after changes the adapter re-reads the touched and new products one
+    by one. Results and stock carry `ct_blueprint_id` when CardTrader picked one CardLedger didn't know.
   - `adapter.ts`, `tab.ts`: as for Cardmarket. Ship: `markShipped` on the order page (tracking first).
 - `src/markets/tab.ts`: shared tab lookup + agent injection/calls (`AgentCall<Request>`); `src/lib/forms.ts`:
   `formData`/`formAction` (posting a site's own forms) and `Pacer`.

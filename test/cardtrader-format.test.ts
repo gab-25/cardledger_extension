@@ -3,63 +3,75 @@ import {
   URLS,
   buildImportCsv,
   conditionFromCt,
+  editBody,
   isSignInPage,
   isSignInUrl,
   languageFromCt,
-  looksLikeCsv,
-  parseAlerts,
   parseCsrfToken,
   parseCtMoney,
-  parseExportLink,
-  parseInventoryCsv,
+  parseImportStatus,
+  parseInventoryPage,
   parseOrderPage,
   parseOrdersList,
   parseUsername,
+  toCtStockRow,
   toStockRow,
 } from "../src/markets/cardtrader/format";
 import { change, fixture, html } from "./helpers";
 
 const page = (name: string) => html(fixture(`cardtrader/${name}`));
 
-describe("CardTrader inventory export", () => {
-  it("parses the export CSV into stock rows with blueprint, Cardmarket id and tag", () => {
-    const rows = parseInventoryCsv(fixture("cardtrader/inventory-export.csv"));
-    expect(rows).toHaveLength(4);
-    expect(rows[0]).toEqual({
-      market_listing_id: "5001", ct_blueprint_id: 9001, cm_product_id: 576041, name: "Ragavan, Nimble Pilferer",
-      set_code: "MH2", collector_number: "138", condition: "NM", language: "EN", foil: false, quantity: 1, price: "48.00",
-      tag: "cardledger:11",
-    });
-    expect(rows[1]).toMatchObject({ ct_blueprint_id: 9100, cm_product_id: null, condition: "LP", language: "IT", quantity: 2, price: "71.80", tag: "" });
-    expect(rows[2]).toMatchObject({ collector_number: "25", condition: "M", language: "JP", foil: true });
-    expect(rows[3]).toMatchObject({ name: "Modern Horizons 2 Booster Box", condition: "", collector_number: "", quantity: 3 });
-    expect(toStockRow(rows[0]!)).not.toHaveProperty("tag");
-  });
-
-  it("accepts other column names, a ; delimiter and prices in cents", () => {
-    expect(parseInventoryCsv("product_id;Blueprint ID;Name;price_cents;Quantity;Language\n7;8;Bolt;150;3;Italian\n;9;skipped;1;1;en\n")).toEqual([{
-      market_listing_id: "7", ct_blueprint_id: 8, cm_product_id: null, name: "Bolt", set_code: "", collector_number: "",
-      condition: "", language: "IT", foil: false, quantity: 3, price: "1.50", tag: "",
+describe("CardTrader inventory (real answers)", () => {
+  it("reads My items' JSON into stock rows", () => {
+    const { rows, last } = parseInventoryPage(JSON.parse(fixture("cardtrader/inventory-page.json")));
+    expect(last).toBe(true);
+    expect(rows).toEqual([{
+      market_listing_id: "474097907", ct_blueprint_id: 1609, cm_product_id: null, name: "Llanowar Elves", set_code: "DOM",
+      collector_number: "168", condition: "NM", language: "EN", foil: false, quantity: 1, price: "99.00", tag: "",
     }]);
+    expect(toStockRow(rows[0]!)).not.toHaveProperty("tag");
+    expect(() => parseInventoryPage({ error: "x" })).toThrow("no products");
   });
 
-  it("tells a CSV download from an HTML page", () => {
-    expect(looksLikeCsv(fixture("cardtrader/inventory-export.csv"))).toBe(true);
-    expect(looksLikeCsv(fixture("cardtrader/export-page.html"))).toBe(false);
-    expect(looksLikeCsv("anything", "text/csv; charset=utf-8")).toBe(true);
+  it("reads a product's JSON with its tag, and builds the edit panel's body from it", () => {
+    const { product } = JSON.parse(fixture("cardtrader/product.json"));
+    expect(toCtStockRow(product)).toMatchObject({ market_listing_id: "474097907", tag: "cardledger:test" });
+    // the real body of a price change to 98.50 on this product
+    expect(editBody(product, { quantity: 1, price: "98.5", condition: "NM", language: "EN", foil: false, comment: "", isProduct: false }, "tok")).toEqual({
+      authenticity_token: "tok",
+      product: { graded: false, description: "", tag: "", quantity: 1, price: "98.50", prop_condition: "Near Mint",
+        prop_mtg_language: "en", prop_mtg_foil: "false", prop_signed: "false", prop_altered: "false" },
+    });
+  });
+
+  it("reads a sealed product without condition and foil", () => {
+    const row = toCtStockRow({ id: 5, price_cents: 26500, quantity: 3, blueprint_id: 88, name_en: "MH2 Box", expansion: { code: "mh2" },
+      properties_hash: { mtg_language: "it" } });
+    expect(row).toMatchObject({ condition: "", language: "IT", foil: false, set_code: "MH2", price: "265.00", collector_number: "" });
   });
 });
 
-describe("CardTrader inventory import", () => {
-  it("writes creates (by blueprint, Cardmarket id or set), updates and deletes by product id", () => {
+describe("CardTrader import", () => {
+  it("writes the creates with the header of the column names", () => {
     const csv = buildImportCsv([
       change({ listing_id: 101, quantity: 2, price: "48", item: { language: "JP", foil: true } }),
-      change({ listing_id: 102, price: 1.5, item: { name: "Pikachu", game: "pokemon", set_code: "SV1", collector_number: "025", cm_product_id: null, ct_blueprint_id: 7001, condition: "EX", language: "IT" } }),
+      change({ listing_id: 102, price: 1.5, item: { name: "Pikachu", set_code: "SV1", collector_number: "025", cm_product_id: null, ct_blueprint_id: 7001, condition: "EX", language: "KO" } }),
       change({ listing_id: 103, quantity: 3, price: "265", item: { name: "Modern Horizons 2 Booster Box", collector_number: "", cm_product_id: null, is_product: true, foil: true } }),
-      change({ listing_id: 104, action: "update", market_listing_id: "5002", price: "70", item: { condition: "LP", language: "IT" } }),
-      change({ listing_id: 105, action: "delete", market_listing_id: "5003", price: "19.2", item: { condition: "M", language: "JP", foil: true } }),
     ]);
-    expect(csv).toBe(fixture("cardtrader/import-expected.csv").replace(/\r?\n/g, "\r\n"));
+    expect(csv.split("\r\n")).toEqual([
+      "blueprint_id,mkm_id,expansion_code,collector_number,name,quantity,price,condition,language,foil,user_data_field",
+      ",576041,mh2,138,\"Ragavan, Nimble Pilferer\",2,48.00,Near Mint,jp,true,cardledger:101",
+      "7001,,sv1,025,Pikachu,1,1.50,Slightly Played,kr,false,cardledger:102",
+      ",,mh2,,Modern Horizons 2 Booster Box,3,265.00,,en,,cardledger:103",
+      "",
+    ]);
+  });
+
+  it("reads an import's page: processing, then its summary", () => {
+    expect(parseImportStatus(page("import-processing.html")).done).toBe(false);
+    expect(parseImportStatus(page("import-result.html"))).toEqual({
+      done: true, rows: 1, warnings: 0, errors: 0, created: 1, message: "1 rows, 0 with errors, 0 with warnings, 1 items created",
+    });
   });
 });
 
@@ -67,6 +79,8 @@ describe("CardTrader codes and money", () => {
   it("maps conditions, languages and amounts", () => {
     expect(conditionFromCt("Slightly Played")).toBe("EX");
     expect(conditionFromCt("heavily played")).toBe("PL");
+    expect(conditionFromCt("Played")).toBe("LP");
+    expect(languageFromCt("kr")).toBe("KO");
     expect(languageFromCt("zh-CN")).toBe("ZHS");
     expect(languageFromCt("German")).toBe("DE");
     expect(parseCtMoney("€1,234.50")).toBe("1234.50");
@@ -77,21 +91,17 @@ describe("CardTrader codes and money", () => {
 
 describe("CardTrader pages", () => {
   it("knows the seller, the CSRF token and the sign-in page", () => {
-    expect(parseUsername(page("export-page.html"))).toBe("LedgerShop");
-    expect(parseCsrfToken(page("export-page.html"))).toBe("csrf-export-1");
+    expect(parseUsername(page("home.html"))).toBe("ledgershop");
+    expect(parseCsrfToken(page("home.html"))).toBe("csrf-ct-1");
     expect(isSignInPage(page("logged-out.html"))).toBe(true);
-    expect(isSignInPage(page("export-page.html"))).toBe(false);
+    expect(isSignInPage(page("home.html"))).toBe(false);
     expect(parseUsername(page("logged-out.html"))).toBeNull();
     expect(isSignInUrl("https://www.cardtrader.com/users/sign_in?redirect=1")).toBe(true);
   });
 
-  it("finds the export file, the flash messages and the orders", () => {
-    expect(parseExportLink(page("export-page.html"))).toBeNull();
-    expect(parseExportLink(page("export-ready.html"))).toBe("https://www.cardtrader.com/en/manage/products/exports/321/download");
-    expect(parseAlerts(page("import-done.html"))).toEqual({ success: "Import completed: 4 products processed.", error: null });
-    expect(parseAlerts(page("import-refused.html")).error).toMatch(/unknown column/);
+  it("finds the orders", () => {
     expect(parseOrdersList(page("orders-paid.html"))).toEqual(["880001", "880002"]);
-    expect(URLS.orders("sent", 2)).toBe("https://www.cardtrader.com/en/orders?order_as=seller&state=sent&page=2");
+    expect(URLS.orders("sent", 2)).toBe("https://www.cardtrader.com/en-EU/orders?order_as=seller&state=sent&page=2");
   });
 
   it("reads an order from the JSON embedded in its page", () => {

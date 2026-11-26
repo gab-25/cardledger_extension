@@ -1,0 +1,128 @@
+<!doctype html>
+<!-- Real page (redacted), captured 2026-11-26. -->
+<html><head><title>Import items from file | CardTrader</title>
+<meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="csrf-ct-1" />
+</head>
+<body>
+<div class="header"><div class="top-header"><div class="dropdown show">
+      <a class="dropdown-toggle top-header__button px-2" href="#" id="profile-dropdown" data-toggle="dropdown">
+        <div class="position-relative">
+          <i class="top-header__icons fas fa-user ss-fw"></i>
+            <span id="vacation-icon" class="d-none"></span>
+
+          <span class="top-header__under-button">
+            <b class="text-secondary">
+                €0.00
+            </b>
+          </span>
+        </div>
+      </a>
+
+      <div class="dropdown-menu" aria-labelledby="profile-dropdown">
+  <a class="dropdown-item" href="/en-EU/profile/edit">
+    <i class="fas fa-fw fa-user"></i> Profile
+</a>
+  <a class="dropdown-item" href="/en-EU/users/ledgershop">
+    <i class="fas fa-fw fa-bars"></i> My items
+</a>
+    <a class="dropdown-item" href="/en-EU/wishlists">
+      <i class="fas fa-fw fa-heart"></i> Wishlists
+</a>
+  <a class="dropdown-item" href="/en-EU/issues">
+    <i class="fas fa-fw fa-map-marker-exclamation"></i>
+    <span class="position-relative d-inline-block">
+      Issues &amp; Refunds
+    </span>
+</a>
+    <a class="dropdown-item" href="/en-EU/announcements">
+      <i class="fas fa-fw fa-bullhorn"></i> Announcements
+</a>
+  <a class="dropdown-item" href="/en-EU/wallet">
+    <i class="fas fa-fw fa-piggy-bank"></i> Wallet
+</a>
+
+
+
+</div>
+
+    </div></div></div>
+<main>
+<form id="form-text-modal" enctype="multipart/form-data" action="/en-EU/product_imports" accept-charset="UTF-8" method="post"><input type="hidden" name="authenticity_token" value="tok-ct-1" />
+          
+
+          <div class="custom-file d-none">
+            <input class="custom-file-input" data-target="dropzone.input" data-action="change-&gt;dropzone#submit" type="file" name="product_import[csv]" id="product_import_csv" />
+            <label class="custom-file-label" for="product_import_csv">Csv</label>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12 col-lg-6 mb-1 mt-1">
+              <div class="dropzone" data-target="dropzone.zone" data-action="click->dropzone#click dragover->dropzone#dragover dragleave->dropzone#dragleave drop->dropzone#drop">
+                <span class="text-center" data-target="dropzone.labelReady">
+                  <i class="fas fa-upload fa-3x mb-3"></i>
+                  <br/>
+                  Drag your file here or click to browse files. Supported files: .txt .csv .xls .xlsx .xlsm .ods .xml
+                </span>
+                <span class="d-none text-center" data-target="dropzone.labelLoading">
+                  <i class="fal fa-3x fa-spinner-third fa-spin mb-3"></i>
+                  <br/>
+                  Uploading... please wait.
+                </span>
+              </div>
+            </div>
+            <div class="col-md-12 col-lg-6 mb-1 mt-1">
+              
+<div
+  id="text-modal"
+  class="modal"
+  role="dialog"
+  data-controller=""
+  
+>
+<div class="modal-dialog modal-lg " role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Copy and paste a text</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      <div class="modal-body">
+          
+                <div class="form-group">
+                  <textarea class="form-control" placeholder="eld;1;Acclaimed Contender;2;en;NM;1.60;
+eld;59;Opt;1;en;NM;0.70;" style="height: 200px;" name="product_import[txt]" id="product_import_txt">
+</textarea>
+                </div>
+
+      </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+            <button class="btn btn-full-width-sm btn-tertiary"
+              
+              data-target="remote-modal.submit "
+              data-disable-with="<i class='loader'></i> Save"
+              data-confirm=""
+              
+              form="form-text-modal"
+            >
+              Save
+            </button>
+        </div>
+    </div>
+  </div>
+</div>
+              <a data-toggle="modal" data-target="#text-modal" href="#">
+                <div class="border border-primary p-5 d-flex align-items-center justify-content-center text-primary" style="height: 150px;">
+                  <span class="text-center" data-target="dropzone.labelReady">
+                    <i class="fas fa-copy fa-3x mb-3"></i>
+                    <br/>
+                    Copy and paste a text
+                  </span>
+                </div>
+</a>            </div>
+          </div>
+</form>
+</main>
+</body></html>

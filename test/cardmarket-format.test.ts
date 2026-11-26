@@ -1,61 +1,79 @@
 import { describe, expect, it } from "vitest";
 import {
   URLS,
-  buildImportCsv,
+  amountArgs,
+  cmPrice,
   conditionFromCm,
+  editFields,
   formAction,
   formData,
   languageFromCm,
-  looksLikeCsv,
+  listFields,
+  parseAjaxResponse,
   parseAlerts,
+  parseAmountArgsPrefix,
   parseCmDate,
   parseCmMoney,
-  parseExportLink,
+  parseOffersCategories,
+  parseOffersPage,
   parseOrderPage,
+  parsePagination,
   parseSalesList,
-  parseStockCsv,
   parseUsername,
 } from "../src/markets/cardmarket/format";
-import { change, fixture, html } from "./helpers";
+import { fixture, html } from "./helpers";
 
-describe("Cardmarket stock export", () => {
-  it("parses the export CSV into stock rows", () => {
-    const rows = parseStockCsv(fixture("cardmarket/stock-export.csv"));
-    expect(rows).toHaveLength(4);
-    expect(rows[0]).toEqual({
-      market_listing_id: "1001234567", cm_product_id: 576041, name: "Ragavan, Nimble Pilferer", set_code: "MH2",
-      collector_number: "138", condition: "NM", language: "EN", foil: false, quantity: 1, price: "48.00",
-    });
-    expect(rows[1]).toMatchObject({ name: "Sheoldred, the Apocalypse", condition: "LP", language: "IT", quantity: 2, price: "71.80" });
-    expect(rows[2]).toMatchObject({ condition: "M", language: "JP", foil: true, price: "19.20" });
-    expect(rows[3]).toMatchObject({ collector_number: "45", condition: "EX" });
+describe("Cardmarket offers (real pages)", () => {
+  it("lists the categories with offers", () => {
+    expect(parseOffersCategories(html(fixture("cardmarket/offers-index.html")))).toEqual(["Singles"]);
   });
 
-  it("accepts other column names and a comma delimiter", () => {
-    const rows = parseStockCsv("Article ID,Product ID,Name,Set,Price,Language,Condition,Foil,Quantity\n9,10,Bolt,LEA,\"1,50\",German,Near Mint,,3\n,11,skipped\n");
-    expect(rows).toEqual([{ market_listing_id: "9", cm_product_id: 10, name: "Bolt", set_code: "LEA", collector_number: "",
-      condition: "NM", language: "DE", foil: false, quantity: 3, price: "1.50" }]);
+  it("parses the rows of an offers page", () => {
+    const doc = html(fixture("cardmarket/offers-singles.html"));
+    expect(parseOffersPage(doc)).toEqual([{
+      market_listing_id: "2212569958", cm_product_id: 319744, name: "Llanowar Elves", set_code: "DOM", collector_number: "",
+      condition: "NM", language: "EN", foil: false, quantity: 1, price: "99.00",
+    }]);
+    expect(parsePagination(doc)).toEqual({ page: 1, pages: 2 });
+    expect(parseOffersPage(html(fixture("cardmarket/offers-singles-2.html")))).toEqual([{
+      market_listing_id: "2212570001", cm_product_id: 576041, name: "Ragavan, Nimble Pilferer", set_code: "MH2", collector_number: "",
+      condition: "LP", language: "IT", foil: true, quantity: 3, price: "1234.50",
+    }]);
+    expect(parsePagination(html("<p>nothing</p>"))).toEqual({ page: 1, pages: 1 });
   });
 
-  it("tells a CSV download from an HTML page", () => {
-    expect(looksLikeCsv(fixture("cardmarket/stock-export.csv"))).toBe(true);
-    expect(looksLikeCsv(fixture("cardmarket/export-page.html"))).toBe(false);
-    expect(looksLikeCsv("whatever", "text/csv; charset=utf-8")).toBe(true);
+  it("builds the +/- quantity args from the page's prefix", () => {
+    const prefix = parseAmountArgsPrefix(fixture("cardmarket/offers-singles.html"))!;
+    expect(prefix.startsWith("%23%11%10%0C")).toBe(true);
+    expect(parseAmountArgsPrefix("<html></html>")).toBeNull();
+    // the real request of a "-1" click on this article
+    expect(amountArgs(prefix, "2212569958", -1)).toBe(`${prefix}eyJzaG93VXNlck9mZmVyc1JvdyI6IjEiLCJzaWduIjoiLTEiLCJpZEFydGljbGUiOiIyMjEyNTY5OTU4IiwiYW1vdW50IjoiMSJ9`);
+  });
+
+  it("reads AJAX answers", () => {
+    expect(parseAjaxResponse(fixture("cardmarket/ajax-edit-ok.xml"))).toEqual({ ok: true, message: "Your request was executed successfully" });
+    expect(parseAjaxResponse(fixture("cardmarket/ajax-amount-ok.xml"))).toEqual({ ok: true, message: null });
+    expect(parseAjaxResponse(fixture("cardmarket/ajax-amount-removed.xml"))).toEqual({ ok: true, message: null });
+    expect(parseAjaxResponse(fixture("cardmarket/logged-out.html")).ok).toBe(false);
+  });
+
+  it("fills the sell and edit forms", () => {
+    const a = { price: 98.5, language: "EN", condition: "M", foil: false, comment: "" };
+    expect(listFields({ ...a, quantity: 1 })).toEqual({ amount: "1", idLanguage: "1", idCondition: "1", price: "98,50", comments: "" });
+    expect(editFields({ ...a, copies: 2, foil: true })).toEqual({ condition: "MT", idLanguage: "1", price: "98,50", comments: "", editAmount: "2", isFoil: "on" });
+    expect(() => listFields({ ...a, quantity: 1, language: "XX" })).toThrow('Language "XX"');
+    expect(() => cmPrice("0")).toThrow("Invalid price");
+  });
+
+  it("posts the real sell form to its action", () => {
+    const doc = html(fixture("cardmarket/product-page.html"));
+    const form = doc.querySelector<HTMLFormElement>("form#ListProductForm")!;
+    expect(formData(form).get("__cmtkn")).toBe("tok-list-1");
+    expect(formAction(form, URLS.product("mtg", 319744))).toBe("https://www.cardmarket.com/en/Magic/PostGetAction/Article_ListProduct");
   });
 });
 
-describe("Cardmarket stock import", () => {
-  it("generates the import CSV from plan changes", () => {
-    const csv = buildImportCsv([
-      change({ action: "create", quantity: 2, price: "45.5" }),
-      change({ action: "update", market_listing_id: "1001234568", quantity: 1, price: 69, comment: "Light wear; see photos",
-        item: { cm_product_id: 662321, condition: "LP", language: "IT" } }),
-      change({ action: "delete", market_listing_id: "1001234570", price: "0.80", item: { cm_product_id: 694580, condition: "EX", language: "IT" } }),
-      change({ action: "create", price: 20, comment: 'says "foil"', item: { cm_product_id: 636203, condition: "M", language: "JP", foil: true } }),
-    ]);
-    expect(csv.replace(/\r\n/g, "\n")).toBe(fixture("cardmarket/import-expected.csv"));
-  });
-
+describe("Cardmarket codes", () => {
   it("round-trips codes", () => {
     expect(conditionFromCm("MT")).toBe("M");
     expect(conditionFromCm("light played")).toBe("LP");
@@ -66,26 +84,13 @@ describe("Cardmarket stock import", () => {
 
 describe("Cardmarket pages", () => {
   it("reads the logged-in username, or none", () => {
-    expect(parseUsername(html(fixture("cardmarket/export-page.html")))).toBe("LedgerShop");
+    expect(parseUsername(html(fixture("cardmarket/offers-index.html")))).toBe("LedgerShop");
     expect(parseUsername(html(fixture("cardmarket/logged-out.html")))).toBeNull();
   });
 
-  it("reads alerts and the export download link", () => {
-    expect(parseAlerts(html(fixture("cardmarket/import-refused.html")))).toEqual({
-      success: null, error: 'The file could not be read: unknown column "Foil?".',
-    });
-    expect(parseExportLink(html(fixture("cardmarket/export-ready.html")))).toBe("https://www.cardmarket.com/en/Magic/Stock/Export/File/88123");
-    expect(parseExportLink(html(fixture("cardmarket/export-page.html")))).toBeNull();
-  });
-
-  it("collects the form's fields with the file", async () => {
-    const doc = html(fixture("cardmarket/import-page.html"));
-    const form = doc.querySelector("form")!;
-    const data = formData(form, { csvFile: new Blob(["a;b"], { type: "text/csv" }) });
-    expect(data.get("__cmtkn")).toBe("tok-import-7");
-    expect(data.getAll("mode")).toEqual(["replace"]);
-    expect((data.get("csvFile") as File).name).toBe("stock.csv");
-    expect(formAction(form, URLS.stockImport("mtg"))).toBe("https://www.cardmarket.com/en/Magic/PostGetAction/Stock_Import");
+  it("reads alerts", () => {
+    expect(parseAlerts(html(fixture("cardmarket/list-done.html")))).toEqual({ success: "Your item(s) have been listed!", error: null });
+    expect(parseAlerts(html(fixture("cardmarket/list-refused.html")))).toEqual({ success: null, error: "The price must be at least 0,02 €." });
   });
 
   it("lists order ids of a sales page", () => {

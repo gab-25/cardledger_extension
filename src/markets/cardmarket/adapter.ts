@@ -1,13 +1,13 @@
 // Cardmarket adapter (background side): drives the agent running in the user's cardmarket.com tab.
-// One sync, per game: export the stock, upload one import CSV with the plan's changes (deletes per article when
-// DELETE_STRATEGY says so), export again and verify every change against it (plan.ts), then read the Paid and Sent
-// sales and each of their orders. All requests are sequential and paced by the agent.
+// One sync, per game: read the stock ("My Offers"), apply each change of the plan with its page action (sell form,
+// edit modal, +/- quantity), read the stock again and verify every change against it (plan.ts), then read the Paid
+// and Sent sales and each of their orders. All requests are sequential and paced by the agent.
 
-import type { MarketRunOutput, OrderRow, Plan, StockRow } from "../../types";
+import type { MarketRunOutput, OrderRow, Plan, PlanChange, StockRow } from "../../types";
 import { errorText } from "../../lib/util";
 import type { AgentCall as AnyAgentCall } from "../tab";
-import type { AgentRequest } from "./agent";
-import { CM_GAMES, buildImportCsv } from "./format";
+import type { AgentRequest, ArticleFields } from "./agent";
+import { CM_GAMES } from "./format";
 import { reconcile, splitPlan } from "./plan";
 
 /** Sends one request to the agent and returns its value (throws its error). */
@@ -34,31 +34,23 @@ export async function runCardmarket({ agent, plan, games }: CardmarketRunInput, 
   partial.stock = stock;
 
   for (const game of allGames) {
-    const before = await agent<StockRow[]>({ cmd: "exportStock", game });
+    const before = await agent<StockRow[]>({ cmd: "readStock", game });
     const todo = work.find((w) => w.game === game);
     if (!todo) {
       stock.push(...before);
       continue;
     }
-    const notes: string[] = [];
-    if (todo.imports.length) {
+    const notes: Record<number, string> = {};
+    for (const change of todo.changes) {
       try {
-        const { message } = await agent<{ message: string | null }>({ cmd: "importStock", game, csv: buildImportCsv(todo.imports) });
-        if (message) notes.push(message);
+        await applyChange(agent, game, change, before);
       } catch (exc) {
-        notes.push(errorText(exc));
+        notes[change.listing_id] = errorText(exc);
       }
     }
-    for (const change of todo.removals) {
-      try {
-        await agent({ cmd: "removeArticle", game, articleId: change.market_listing_id });
-      } catch (exc) {
-        notes.push(errorText(exc));
-      }
-    }
-    const after = await agent<StockRow[]>({ cmd: "exportStock", game });
+    const after = await agent<StockRow[]>({ cmd: "readStock", game });
     stock.push(...after);
-    partial.results.push(...reconcile([...todo.imports, ...todo.removals], before, after, notes.join("; ") || null));
+    partial.results.push(...reconcile(todo.changes, before, after, notes));
   }
 
   const orders: OrderRow[] = [];
@@ -72,6 +64,30 @@ export async function runCardmarket({ agent, plan, games }: CardmarketRunInput, 
       }
     }
   }
+}
+
+/** One plan change, done with its page action (checked afterwards by reconcile). */
+async function applyChange(agent: AgentCall, game: string, change: PlanChange, before: StockRow[]): Promise<void> {
+  const fields: ArticleFields = {
+    price: change.price,
+    language: change.item.language,
+    condition: change.item.condition,
+    foil: change.item.foil,
+    comment: change.comment ?? "",
+  };
+  if (change.action === "create") {
+    await agent({ cmd: "listArticle", game, productId: change.item.cm_product_id!, quantity: change.quantity, ...fields });
+    return;
+  }
+  const current = before.find((r) => r.market_listing_id === change.market_listing_id);
+  if (change.action === "delete" || change.quantity <= 0) {
+    if (current) await agent({ cmd: "changeAmount", game, articleId: current.market_listing_id, delta: -current.quantity });
+    return;
+  }
+  if (!current) throw new Error("article not in the Cardmarket offers");
+  await agent({ cmd: "editArticle", game, articleId: current.market_listing_id, copies: current.quantity, ...fields });
+  const delta = change.quantity - current.quantity;
+  if (delta) await agent({ cmd: "changeAmount", game, articleId: current.market_listing_id, delta });
 }
 
 export async function shipCardmarket(agent: AgentCall, game: string, orderId: string, trackingCode: string): Promise<void> {
