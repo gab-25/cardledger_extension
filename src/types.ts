@@ -58,6 +58,11 @@ export interface PlanChange {
 
 export interface Plan {
   market: MarketCode;
+  /**
+   * Slugs of the games the user has listings of on the market (any status): their stock and orders are read on every
+   * sync, also with nothing to push (Cardmarket's seller pages are per game). Absent from older servers.
+   */
+  games?: string[];
   changes: PlanChange[];
 }
 

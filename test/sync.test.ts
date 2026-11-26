@@ -34,7 +34,6 @@ function deps(api: CardLedgerClient, extra: Partial<SyncDeps> = {}): SyncDeps {
     cardmarket: async () => {
       throw new Error("no tab");
     },
-    cmGames: ["mtg"],
     now: () => NOW,
     uuid: () => `run-${++n}`,
     ...extra,
@@ -64,14 +63,18 @@ describe("runSync", () => {
     const { api, reports, calls } = ledger({
       "GET /api/extension/plan/?market=ct": () => ({ market: "ct", changes: [del] }),
     });
-    const exports = [[{ market_listing_id: "5", tag: "" }], []];
+    const inventories = [[{ market_listing_id: "5", ct_blueprint_id: 9, tag: "" }], [{ market_listing_id: "5", ct_blueprint_id: 9, tag: "" }]];
+    const seen: string[] = [];
     const agent: CtAgentCall = async <T,>(req: { cmd: string }) => {
+      seen.push(req.cmd);
       if (req.cmd === "whoami") return { username: "CtShop" } as T;
-      if (req.cmd === "exportInventory") return exports.shift() as T;
-      if (req.cmd === "importInventory") return { message: null } as T;
+      if (req.cmd === "readInventory") return inventories.shift() as T;
+      if (req.cmd === "readProducts") return { "5": null } as T; // deleted: the lagging index still showed it
+      if (req.cmd === "deleteProduct") return undefined as T;
       return [] as T;
     };
     const summary = await runSync("ct", deps(api, { cardtrader: async () => agent }));
+    expect(seen).toEqual(["whoami", "readInventory", "deleteProduct", "readInventory", "readProducts", "listOrders", "listOrders"]);
     expect(calls.map((c) => `${c.method} ${c.url.pathname}${c.url.search}`)).toEqual([
       "GET /api/extension/plan/?market=ct", "POST /api/extension/report/",
     ]);
@@ -80,6 +83,18 @@ describe("runSync", () => {
       results: [{ listing_id: del.listing_id, ok: true, market_listing_id: "5" }], stock: [], orders: [],
     }]);
     expect(summary).toMatchObject({ ok: true, run_id: "run-1", published: 1, handle: "CtShop", response: { applied: 1 } });
+  });
+
+  it("Cardmarket: reads the stock and orders of the games CardLedger names in the plan", async () => {
+    const { api } = ledger({ "GET /api/extension/plan/?market=cm": () => ({ market: "cm", games: ["mtg", "pokemon"], changes: [] }) });
+    const seen: string[] = [];
+    const agent: AgentCall = async <T,>(req: { cmd: string; game?: string }) => {
+      seen.push(`${req.cmd}${req.game ? ` ${req.game}` : ""}`);
+      return (req.cmd === "whoami" ? { username: "Shop" } : []) as T;
+    };
+    await runSync("cm", deps(api, { cardmarket: async () => agent }));
+    expect(seen.filter((s) => s.startsWith("readStock"))).toEqual(["readStock mtg", "readStock pokemon"]);
+    expect(seen.filter((s) => s.startsWith("listOrders"))).toEqual(["listOrders mtg", "listOrders mtg", "listOrders pokemon", "listOrders pokemon"]);
   });
 
   it("reports a failed run too, with its error", async () => {
@@ -95,7 +110,7 @@ describe("runSync", () => {
   });
 
   it("keeps what was done when a later step fails", async () => {
-    const { api, reports } = ledger({ "GET /api/extension/plan/?market=cm": () => ({ market: "cm", changes: [change({ item: { cm_product_id: null } })] }) });
+    const { api, reports } = ledger({ "GET /api/extension/plan/?market=cm": () => ({ market: "cm", games: ["mtg"], changes: [change({ item: { cm_product_id: null } })] }) });
     const agent: AgentCall = async <T,>(req: { cmd: string }) => {
       if (req.cmd === "whoami") return { username: "Shop" } as T;
       throw new Error("export broke");

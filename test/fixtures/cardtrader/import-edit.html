@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- Real page (redacted), captured 2026-11-26. -->
+<html><head><title>Import items from file | CardTrader</title>
+<meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="csrf-ct-1" />
+</head>
+<body>
+<div class="header"><div class="top-header"><div class="dropdown show">
+      <a class="dropdown-toggle top-header__button px-2" href="#" id="profile-dropdown" data-toggle="dropdown">
+        <div class="position-relative">
+          <i class="top-header__icons fas fa-user ss-fw"></i>
+            <span id="vacation-icon" class="d-none"></span>
+
+          <span class="top-header__under-button">
+            <b class="text-secondary">
+                €0.00
+            </b>
+          </span>
+        </div>
+      </a>
+
+      <div class="dropdown-menu" aria-labelledby="profile-dropdown">
+  <a class="dropdown-item" href="/en-EU/profile/edit">
+    <i class="fas fa-fw fa-user"></i> Profile
+</a>
+  <a class="dropdown-item" href="/en-EU/users/ledgershop">
+    <i class="fas fa-fw fa-bars"></i> My items
+</a>
+    <a class="dropdown-item" href="/en-EU/wishlists">
+      <i class="fas fa-fw fa-heart"></i> Wishlists
+</a>
+  <a class="dropdown-item" href="/en-EU/issues">
+    <i class="fas fa-fw fa-map-marker-exclamation"></i>
+    <span class="position-relative d-inline-block">
+      Issues &amp; Refunds
+    </span>
+</a>
+    <a class="dropdown-item" href="/en-EU/announcements">
+      <i class="fas fa-fw fa-bullhorn"></i> Announcements
+</a>
+  <a class="dropdown-item" href="/en-EU/wallet">
+    <i class="fas fa-fw fa-piggy-bank"></i> Wallet
+</a>
+
+
+
+</div>
+
+    </div></div></div>
+<main>
+<form action="/en-EU/product_imports/9474248" accept-charset="UTF-8" method="post"><input type="hidden" name="_method" value="patch" /><input type="hidden" name="authenticity_token" value="tok-ct-1" />
+        
+
+        <div class="row my-3 align-items-end mb-xl-0">
+          <div class="col-md-3 col-sm-12">
+            <div class="form-group">
+              <label for="product_import_game_id">Which game are your importing?</label>
+              <select class="form-control" name="product_import[game_id]" id="product_import_game_id"><option selected="selected" value="1">Magic: the Gathering</option>
+<option value="4">Yu-Gi-Oh!</option>
+<option value="5">Pokémon</option>
+<option value="6">Flesh and Blood</option>
+<option value="8">Digimon</option>
+<option value="9">Dragon Ball Super</option>
+<option value="10">Cardfight!! Vanguard</option>
+<option value="15">One Piece</option>
+<option value="18">Disney Lorcana</option>
+<option value="20">Star Wars Unlimited</option>
+<option value="21">Union Arena</option>
+<option value="22">Riftbound | League of Legends</option>
+<option value="23">Gundam</option>
+<option value="24">Sorcery: Contested Realm</option>
+<option value="26">Palworld</option>
+<option value="27">Cyberpunk</option></select>
+            </div>
+          </div>
+          <div class="col-md-6 col-sm-12 col-lg-7">
+            <div class="form-group">
+              <label for="product_import_replace_stock">
+                <div class="d-flex-inline">
+                  Do you want to fully replace your inventory or just add items to the ones already existing?
+                  <i class="fas fa-info-circle" data-toggle="tooltip" title="By selecting &#39;Replace inventory&#39;, your collection for the selected game will be replaced. By selecting &#39;Add new items&#39;, the products specified in the file will be added (without altering the current collection)."></i>
+                </div>
+</label>              <select class="form-control" name="product_import[replace_stock]" id="product_import_replace_stock"><option selected="selected" value="false">Add new items to the inventory</option>
+<option value="true">Replace inventory (WARNING: deletes existing products for the selected game)</option></select>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-12 col-lg-2 text-right text-md-center">
+            <div class="form-group">
+              <button type="submit" class="btn btn-tertiary btn-lg" data-disable-with="<i class='loader'></i> Start import">
+                <i class="fas fa-play"></i> Start import
+              </button>
+            </div>
+          </div>
+        </div>
+
+          <div class="table-responsive">
+            <table class="table tbl">
+              <tr data-controller="product-import-csv-column-names">
+                  <th class="bg-light text-left">
+                    <select name="product_import[csv_column_names][]" id="product_import_csv_column_names_0" style="width: 100%;min-width: 80px;" data-target="product-import-csv-column-names.select"><option value="_">Ignore</option>
+<option value="altered">Altered</option>
+<option value="mkm_id">CardMarket Product ID</option>
+<option value="blueprint_id">CardTrader Blueprint ID</option>
+<option value="expansion_id">CardTrader Expansion ID</option>
+<option value="collector_number">Collector Number</option>
+<option value="condition">Condition</option>
+<option value="description">Description</option>
+<option value="expansion_code">Expansion code</option>
+<option value="expansion_name">Expansion name</option>
+<option value="first_edition">First Edition</option>
+<option value="foil">Foil</option>
+<option value="name">Item Name</option>
+<option value="language">Language</option>
+<option value="quantity">Quantity</option>
+<option value="rarity">Rarity</option>
+<option value="reverse">Reverse</option>
+<option value="scryfall_id">Scryfall ID</option>
+<option value="price_cents">Selling Price (in cents)</option>
+<option value="price">Selling price</option>
+<option value="signed">Signed</option>
+<option value="tcgplayer_id">TCGplayer ID</option>
+<option value="tag">Tag</option>
+<option value="user_data_field">User generated additional data</option></select>
+                  </th>
+              </tr>
+                <tr>
+                    <td>dom;168;Llanowar Elves;1;en;NM;99.00;</td>
+                </tr>
+            </table>
+          </div>
+</form>
+</main>
+</body></html>

@@ -1,23 +1,20 @@
 // Turning a CardLedger plan into Cardmarket work, and checking the outcome — pure functions, no page access.
 //
-// Cardmarket's import gives no per-row result we can rely on, so every change is verified against the stock exported
-// right after the import: a create is done when a NEW article (absent before) of the same product, condition,
-// language and foil appears; an update when the article shows the planned amount and price (or, should Cardmarket
-// replace the article on edit, when a new matching one appears); a delete when the article is gone.
+// Every change is done with its own page action, then verified against the stock read again from "My Offers": a
+// create is done when a NEW article (absent before) of the same product, condition, language and foil appears; an
+// update when the article shows the planned amount and price (or, should Cardmarket replace the article on edit,
+// when a new matching one appears); a delete when the article is gone.
 
 import type { ChangeResult, PlanChange, StockRow } from "../../types";
-import { DELETE_STRATEGY, gamePath } from "./format";
+import { gamePath } from "./format";
 
 export interface GameWork {
   game: string;
-  /** Rows of the import CSV (creates, updates and — with "import-zero" — deletes). */
-  imports: PlanChange[];
-  /** Deletes done one by one on the article page ("article-form"). */
-  removals: PlanChange[];
+  changes: PlanChange[];
 }
 
 /** Changes grouped by game; the ones Cardmarket can't take fail right away. */
-export function splitPlan(changes: PlanChange[], deleteStrategy = DELETE_STRATEGY): { work: GameWork[]; failed: ChangeResult[] } {
+export function splitPlan(changes: PlanChange[]): { work: GameWork[]; failed: ChangeResult[] } {
   const byGame = new Map<string, GameWork>();
   const failed: ChangeResult[] = [];
   for (const change of changes) {
@@ -36,9 +33,8 @@ export function splitPlan(changes: PlanChange[], deleteStrategy = DELETE_STRATEG
       failed.push({ listing_id: change.listing_id, ok: true }); // never published: nothing to remove
       continue;
     }
-    const work = byGame.get(change.item.game) ?? { game: change.item.game, imports: [], removals: [] };
-    if (change.action === "delete" && deleteStrategy === "article-form") work.removals.push(change);
-    else work.imports.push(change);
+    const work = byGame.get(change.item.game) ?? { game: change.item.game, changes: [] };
+    work.changes.push(change);
     byGame.set(change.item.game, work);
   }
   return { work: [...byGame.values()], failed };
@@ -58,20 +54,23 @@ function matches(row: StockRow, change: PlanChange): boolean {
 
 /**
  * Results of the changes of one game, comparing the stock before and after the work.
- * note: a message to add to failures (e.g. what Cardmarket said about the import).
+ * notes: per listing id, a message to add to its failure (e.g. what Cardmarket answered to its action).
  */
-export function reconcile(changes: PlanChange[], before: StockRow[], after: StockRow[], note?: string | null): ChangeResult[] {
+export function reconcile(changes: PlanChange[], before: StockRow[], after: StockRow[], notes: Record<number, string> = {}): ChangeResult[] {
   const beforeIds = new Set(before.map((r) => r.market_listing_id));
   const afterById = new Map(after.map((r) => [r.market_listing_id, r]));
   const claimed = new Set<string>();
   const fresh = (change: PlanChange) =>
     after.find((r) => !beforeIds.has(r.market_listing_id) && !claimed.has(r.market_listing_id) && matches(r, change));
-  const failure = (change: PlanChange, error: string): ChangeResult => ({
-    listing_id: change.listing_id,
-    ok: false,
-    ...(change.market_listing_id ? { market_listing_id: change.market_listing_id } : {}),
-    error: note ? `${error} (Cardmarket: ${note})` : error,
-  });
+  const failure = (change: PlanChange, error: string): ChangeResult => {
+    const note = notes[change.listing_id];
+    return {
+      listing_id: change.listing_id,
+      ok: false,
+      ...(change.market_listing_id ? { market_listing_id: change.market_listing_id } : {}),
+      error: note ? `${error} (${note})` : error,
+    };
+  };
 
   const results: ChangeResult[] = [];
   // Updates first: they claim the articles they still own before creates look for new ones.
@@ -92,7 +91,7 @@ export function reconcile(changes: PlanChange[], before: StockRow[], after: Stoc
         results.push(
           row.quantity === change.quantity && samePrice(row.price, change.price)
             ? { listing_id: change.listing_id, ok: true, market_listing_id: row.market_listing_id }
-            : failure(change, `Cardmarket shows ${row.quantity} at ${row.price} after the import`),
+            : failure(change, `Cardmarket shows ${row.quantity} at ${row.price} after the edit`),
         );
         continue;
       }
@@ -102,7 +101,7 @@ export function reconcile(changes: PlanChange[], before: StockRow[], after: Stoc
       claimed.add(row.market_listing_id);
       results.push({ listing_id: change.listing_id, ok: true, market_listing_id: row.market_listing_id });
     } else {
-      results.push(failure(change, change.action === "create" ? "not found on Cardmarket after the import" : "article not on Cardmarket anymore"));
+      results.push(failure(change, change.action === "create" ? "not found on Cardmarket after listing it" : "article not on Cardmarket anymore"));
     }
   }
   // Back in plan order.

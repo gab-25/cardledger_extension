@@ -14,7 +14,6 @@ export interface SyncDeps {
   cardtrader: () => Promise<CtAgentCall>;
   /** The agent of the user's cardmarket.com tab (throws when there is none). */
   cardmarket: () => Promise<AgentCall>;
-  cmGames: string[];
   now?: () => Date;
   uuid?: () => string;
 }
@@ -32,7 +31,7 @@ export async function runSync(market: MarketCode, deps: SyncDeps): Promise<RunSu
     } else {
       const agent = await deps.cardmarket();
       const plan = await deps.api.plan("cm");
-      await runCardmarket({ agent, plan, games: deps.cmGames }, output);
+      await runCardmarket({ agent, plan, games: plan.games ?? [] }, output);
     }
   } catch (exc) {
     error = errorText(exc) || "Unknown error";

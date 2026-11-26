@@ -1,5 +1,0 @@
-id,blueprint_id,cardmarket_id,name_en,expansion_code,expansion_name,collector_number,game_id,condition,language,foil,signed,altered,quantity,price,user_data_field
-5001,9001,576041,"Ragavan, Nimble Pilferer",mh2,Modern Horizons 2,138,1,Near Mint,en,false,false,false,1,48.00,cardledger:11
-5002,9100,,"Sheoldred, the Apocalypse",dmu,Dominaria United,107,1,Played,it,false,false,false,2,71.80,
-5003,7001,700001,Pikachu,sv1,Scarlet & Violet,025,5,Mint,jp,true,false,false,1,19.20,
-5004,8800,,Modern Horizons 2 Booster Box,mh2,Modern Horizons 2,,1,,en,,,,3,265.00,cardledger:14

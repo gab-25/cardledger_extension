@@ -1,0 +1,80 @@
+{
+ "user": {
+  "id": 100001,
+  "username": "LedgerShop",
+  "slug": "ledgershop"
+ },
+ "products": [
+  {
+   "id": 474097907,
+   "price_cents": 9900,
+   "layered_price_cents": 9964,
+   "price_currency": "EUR",
+   "quantity": 1,
+   "description": null,
+   "tag": null,
+   "graded": false,
+   "one_day_ready_uid": null,
+   "game_id": 1,
+   "category_id": 1,
+   "blueprint_id": 1609,
+   "hub_sha": "8f87f9c0034bd07a1c129d448fe2b186",
+   "scanned_at": null,
+   "uploaded_images": [],
+   "properties_hash": {
+    "mtg_rarity": "Common",
+    "condition": "Near Mint",
+    "mtg_language": "en",
+    "mtg_foil": false,
+    "signed": false,
+    "altered": false,
+    "collector_number": "168",
+    "cmc": "1.0",
+    "mtg_card_colors": "G",
+    "tournament_legal": true
+   },
+   "name_en": "Llanowar Elves",
+   "on_vacation": false,
+   "singles": true,
+   "image": "llanowar-elves-dominaria.jpg",
+   "expansion": {
+    "code": "dom",
+    "html": "<i class=\"ss-mtg ss-dom ss-fw\"></i>",
+    "name_en": "Dominaria",
+    "translated_name": "Dominaria"
+   },
+   "user": {
+    "id": 100001,
+    "username": "LedgerShop",
+    "user_type": "normal",
+    "country_code": "IT",
+    "max_sellable_in24h_quantity": null,
+    "one_day_ready": false,
+    "slug": "ledgershop",
+    "can_sell_via_hub": false,
+    "can_sell_sealed_with_ct_zero": false
+   },
+   "direct_layered_price_cents": 9964,
+   "price": {
+    "cents": 9964,
+    "ct_zero_cents": 9964,
+    "currency": "EUR",
+    "currency_symbol": "€",
+    "formatted": "€99.64",
+    "non_layered_price_formatted": "€99.00",
+    "layer_increment_formatted": "€0.64"
+   },
+   "min_shipping_cost_cents": 790,
+   "formatted_min_shipping_cost": "€7.90",
+   "seller_in_cart": false,
+   "translated_name": "Llanowar Elves",
+   "game_name": "Magic: the Gathering",
+   "shipped_to_country": true,
+   "synced": false
+  }
+ ],
+ "products_last_page_reached": true,
+ "products_count": 1,
+ "pending_product_changes": [],
+ "rjs": null
+}

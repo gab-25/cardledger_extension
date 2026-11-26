@@ -6,28 +6,42 @@
 import { errorText, sleep } from "../../lib/util";
 import type { OrderRow, StockRow } from "../../types";
 import {
-  EXPORT_POLL_ATTEMPTS,
-  EXPORT_POLL_GAP_MS,
+  MAX_OFFER_PAGES,
   MAX_ORDER_PAGES,
   MIN_REQUEST_GAP_MS,
   SEL,
   URLS,
+  amountArgs,
+  editFields,
   formAction,
   formData,
-  looksLikeCsv,
+  listFields,
+  parseAjaxResponse,
   parseAlerts,
-  parseExportLink,
+  parseAmountArgsPrefix,
+  parseOffersCategories,
+  parseOffersPage,
   parseOrderPage,
+  parsePagination,
   parseSalesList,
-  parseStockCsv,
   parseUsername,
 } from "./format";
 
+/** What an article is listed or edited with (CardLedger codes). */
+export interface ArticleFields {
+  price: string | number;
+  language: string;
+  condition: string;
+  foil: boolean;
+  comment: string;
+}
+
 export type AgentRequest =
   | { cmd: "whoami" }
-  | { cmd: "exportStock"; game: string }
-  | { cmd: "importStock"; game: string; csv: string }
-  | { cmd: "removeArticle"; game: string; articleId: string }
+  | { cmd: "readStock"; game: string }
+  | ({ cmd: "listArticle"; game: string; productId: number; quantity: number } & ArticleFields)
+  | ({ cmd: "editArticle"; game: string; articleId: string; copies: number } & ArticleFields)
+  | { cmd: "changeAmount"; game: string; articleId: string; delta: number }
   | { cmd: "listOrders"; game: string; state: "Paid" | "Sent"; maxPages?: number }
   | { cmd: "readOrder"; game: string; orderId: string; state: "paid" | "sent" }
   | { cmd: "markShipped"; game: string; orderId: string; trackingCode: string };
@@ -82,43 +96,76 @@ export class Agent {
     return { username: parseUsername(this.deps.document) };
   }
 
-  async exportStock(game: string): Promise<StockRow[]> {
-    const url = URLS.stockExport(game);
-    const start = await this.page(url);
-    const posted = await this.post(this.form(start.doc, SEL.exportForm, "Stock export", url), start.url);
-    if (looksLikeCsv(posted.text, posted.type)) return parseStockCsv(posted.text);
-    let link = parseExportLink(posted.doc);
-    for (let attempt = 0; !link && attempt < EXPORT_POLL_ATTEMPTS; attempt++) {
-      await this.deps.sleep(EXPORT_POLL_GAP_MS);
-      link = parseExportLink((await this.page(url)).doc);
+  /** Every article of the game's "My Offers", category by category, page by page. */
+  async readStock(game: string): Promise<StockRow[]> {
+    const index = await this.page(URLS.offers(game));
+    const rows: StockRow[] = [];
+    for (const category of parseOffersCategories(index.doc)) {
+      for (let page = 1; page <= MAX_OFFER_PAGES; page++) {
+        const current = await this.page(URLS.offersCategory(game, category, page));
+        this.rememberAmountPrefix(game, current.text);
+        const found = parseOffersPage(current.doc).filter((r) => !rows.some((o) => o.market_listing_id === r.market_listing_id));
+        rows.push(...found);
+        if (!found.length || page >= parsePagination(current.doc).pages) break;
+      }
     }
-    if (!link) throw new Error(`The stock export file did not appear on ${url}.`);
-    const file = await this.paced(link);
-    const text = await file.text();
-    if (!file.ok || !looksLikeCsv(text, file.headers.get("content-type") ?? "")) {
-      throw new Error(`The stock export at ${link} is not a CSV file.`);
-    }
-    return parseStockCsv(text);
+    return rows;
   }
 
-  async importStock(game: string, csv: string): Promise<{ message: string | null }> {
-    const url = URLS.stockImport(game);
+  /** Put a product on sale with the sell form of its page. */
+  async listArticle(game: string, productId: number, quantity: number, fields: ArticleFields): Promise<{ message: string | null }> {
+    const url = URLS.product(game, productId);
     const start = await this.page(url);
-    const form = this.form(start.doc, SEL.importForm, "Stock import", url);
-    const fileInput = form.querySelector<HTMLInputElement>(SEL.importFile);
-    if (!fileInput?.name) throw new Error(`No file field in the stock import form on ${url}.`);
-    const result = await this.post(form, start.url, { [fileInput.name]: new Blob([csv], { type: "text/csv" }) });
+    const form = this.form(start.doc, SEL.listForm, "Sell", url);
+    const data = formData(form);
+    for (const name of ["isFoil", "isSigned", "isAltered", "saveSettings"]) data.delete(name);
+    for (const [k, v] of Object.entries(listFields({ ...fields, quantity }))) data.set(k, v);
+    const result = await this.page(formAction(form, start.url), { method: "POST", body: data });
     const alerts = parseAlerts(result.doc);
-    if (alerts.error && !alerts.success) throw new Error(`Cardmarket refused the import: ${alerts.error}`);
-    return { message: alerts.success ?? alerts.error };
+    if (!alerts.success) throw new Error(`Cardmarket did not list product ${productId}: ${alerts.error ?? "no confirmation"}`);
+    return { message: alerts.success };
   }
 
-  async removeArticle(game: string, articleId: string): Promise<void> {
-    const url = URLS.article(game, articleId);
-    const start = await this.page(url);
-    const result = await this.post(this.form(start.doc, SEL.articleRemoveForm, "Remove article", url), start.url);
-    const { error } = parseAlerts(result.doc);
-    if (error) throw new Error(`Cardmarket refused to remove article ${articleId}: ${error}`);
+  /** Change price, condition, language, foil and comment of all `copies` copies of an article (the edit modal). */
+  async editArticle(game: string, articleId: string, copies: number, fields: ArticleFields): Promise<{ message: string | null }> {
+    const url = URLS.editModal(game, articleId);
+    const modal = await this.page(url);
+    const form = this.form(modal.doc, SEL.editForm, "Edit article", url);
+    const data = formData(form);
+    data.delete("isFoil");
+    for (const [k, v] of Object.entries(editFields({ ...fields, copies }))) data.set(k, v);
+    return this.ajax(URLS.ajax(game, form.getAttribute("data-ajax-action")!), data, `edit article ${articleId}`);
+  }
+
+  /** Add (delta > 0) or remove (delta < 0) copies of an article: the offers page's +/- buttons. */
+  async changeAmount(game: string, articleId: string, delta: number): Promise<{ message: string | null }> {
+    if (!Number.isInteger(delta) || delta === 0) throw new Error(`Invalid quantity change ${delta}.`);
+    let prefix = this.amountPrefix.get(game);
+    if (!prefix) {
+      const [category] = parseOffersCategories((await this.page(URLS.offers(game))).doc);
+      if (category) this.rememberAmountPrefix(game, (await this.page(URLS.offersCategory(game, category))).text);
+      prefix = this.amountPrefix.get(game);
+    }
+    if (!prefix) throw new Error("No quantity buttons found on Cardmarket's offers page.");
+    const data = new FormData();
+    data.set("args", amountArgs(prefix, articleId, delta));
+    return this.ajax(URLS.ajax(game), data, `change the quantity of article ${articleId}`);
+  }
+
+  private amountPrefix = new Map<string, string>();
+
+  private rememberAmountPrefix(game: string, html: string): void {
+    const prefix = parseAmountArgsPrefix(html);
+    if (prefix) this.amountPrefix.set(game, prefix);
+  }
+
+  private async ajax(url: string, body: FormData, what: string): Promise<{ message: string | null }> {
+    const resp = await this.paced(url, { method: "POST", body });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(`Cardmarket answered ${resp.status} for ${url}`);
+    const { ok, message } = parseAjaxResponse(text);
+    if (!ok) throw new Error(`Cardmarket refused to ${what}: ${message ?? "no message"}`);
+    return { message };
   }
 
   async listOrders(game: string, state: "Paid" | "Sent", maxPages = MAX_ORDER_PAGES): Promise<string[]> {
@@ -159,12 +206,14 @@ export class Agent {
       switch (req.cmd) {
         case "whoami":
           return { ok: true, value: this.whoami() };
-        case "exportStock":
-          return { ok: true, value: await this.exportStock(req.game) };
-        case "importStock":
-          return { ok: true, value: await this.importStock(req.game, req.csv) };
-        case "removeArticle":
-          return { ok: true, value: await this.removeArticle(req.game, req.articleId) };
+        case "readStock":
+          return { ok: true, value: await this.readStock(req.game) };
+        case "listArticle":
+          return { ok: true, value: await this.listArticle(req.game, req.productId, req.quantity, req) };
+        case "editArticle":
+          return { ok: true, value: await this.editArticle(req.game, req.articleId, req.copies, req) };
+        case "changeAmount":
+          return { ok: true, value: await this.changeAmount(req.game, req.articleId, req.delta) };
         case "listOrders":
           return { ok: true, value: await this.listOrders(req.game, req.state, req.maxPages) };
         case "readOrder":

@@ -1,4 +1,4 @@
-// Messages to the background service worker (chrome.runtime.sendMessage), from the popup, options and the
+// Messages to the background service worker (chrome.runtime.sendMessage), from the popup and the
 // CardLedger page bridge.
 
 import type { Auth } from "./storage";

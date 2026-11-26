@@ -1,0 +1,99 @@
+{
+ "product": {
+  "id": 474097907,
+  "price_cents": 9900,
+  "layered_price_cents": 9964,
+  "price_currency": "EUR",
+  "quantity": 1,
+  "description": null,
+  "tag": null,
+  "graded": false,
+  "skip_autopricer": false,
+  "user_data_field": "cardledger:test",
+  "one_day_ready_uid": null,
+  "game_id": 1,
+  "category_id": 1,
+  "blueprint_id": 1609,
+  "user_id": 100001,
+  "hub_sha": "8f87f9c0034bd07a1c129d448fe2b186",
+  "scanned_at": null,
+  "user": {
+   "id": 100001,
+   "role": "user",
+   "ban": "no",
+   "can_presale": false,
+   "hub": false,
+   "user_type": "normal",
+   "username": "LedgerShop",
+   "gender": null,
+   "birthday": null,
+   "bio": null,
+   "website": null,
+   "country_code": "IT",
+   "slug": "ledgershop",
+   "locale": "it",
+   "items_locale": null,
+   "ct_zero_accept_wrong_items_max_price_cents": null,
+   "one_day_ready": false,
+   "avatar": {
+    "url": "/assets/fallbacks/avatar_uploader/default-58606e5f62d08f37ac809269262c17f4d3569a68fb8c948626c9edd498e71920.png",
+    "preview": {
+     "url": "/assets/fallbacks/avatar_uploader/preview-7b4a518298c946d40ccf077761839bfe63ad0f50e6297c2c5bfab3c51cd01e4e.png"
+    },
+    "show": {
+     "url": "/assets/fallbacks/avatar_uploader/show-5d043de07694b6867e376857befa9fd0e0ca3f5872dd515588150047d075abe9.png"
+    }
+   },
+   "currency": "EUR",
+   "currency_symbol": "€",
+   "staff": false
+  },
+  "expansion": {
+   "id": 19,
+   "parent_id": 19,
+   "game_id": 1,
+   "code": "dom",
+   "html": "<i class=\"ss-mtg ss-dom ss-fw\"></i>",
+   "slug": "dominaria",
+   "released_at": "2018-04-27T00:00:00.000Z",
+   "name": "Dominaria",
+   "translated_name": "Dominaria",
+   "presale": false
+  },
+  "uploaded_images": [],
+  "name": "Llanowar Elves",
+  "translated_name": "Llanowar Elves",
+  "properties_hash": {
+   "mtg_rarity": "Common",
+   "condition": "Near Mint",
+   "mtg_language": "en",
+   "mtg_foil": false,
+   "signed": false,
+   "altered": false,
+   "collector_number": "168",
+   "cmc": "1.0",
+   "mtg_card_colors": "G",
+   "tournament_legal": true
+  },
+  "image": "llanowar-elves-dominaria.jpg",
+  "price": {
+   "cents": 9964,
+   "ct_zero_cents": 9964,
+   "currency": "EUR",
+   "currency_symbol": "€",
+   "formatted": "€99.64",
+   "non_layered_price_formatted": "€99.00",
+   "layer_increment_formatted": "€0.64"
+  }
+ },
+ "blueprint": {
+  "id": 1609,
+  "meta_name": "llanowar-elves",
+  "slug": "1609-llanowar-elves-dominaria",
+  "game_id": 1,
+  "category_id": 1,
+  "expansion_id": 19,
+  "name": "Llanowar Elves"
+ },
+ "_note": "Real answer of GET /en-EU/products/<id>.json (2026-11-26), redacted; the blueprint is cut to a few fields."
+}

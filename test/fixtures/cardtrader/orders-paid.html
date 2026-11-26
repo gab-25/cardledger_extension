@@ -1,12 +1,53 @@
 <!doctype html>
 <html><head><title>Sold orders | CardTrader</title></head>
 <body>
-<header class="navbar"><div class="user-menu"><a href="/en/users/me" data-username="LedgerShop"><span class="username">LedgerShop</span></a></div></header>
+<div class="header"><div class="top-header"><div class="dropdown show">
+      <a class="dropdown-toggle top-header__button px-2" href="#" id="profile-dropdown" data-toggle="dropdown">
+        <div class="position-relative">
+          <i class="top-header__icons fas fa-user ss-fw"></i>
+            <span id="vacation-icon" class="d-none"></span>
+
+          <span class="top-header__under-button">
+            <b class="text-secondary">
+                €0.00
+            </b>
+          </span>
+        </div>
+      </a>
+
+      <div class="dropdown-menu" aria-labelledby="profile-dropdown">
+  <a class="dropdown-item" href="/en-EU/profile/edit">
+    <i class="fas fa-fw fa-user"></i> Profile
+</a>
+  <a class="dropdown-item" href="/en-EU/users/ledgershop">
+    <i class="fas fa-fw fa-bars"></i> My items
+</a>
+    <a class="dropdown-item" href="/en-EU/wishlists">
+      <i class="fas fa-fw fa-heart"></i> Wishlists
+</a>
+  <a class="dropdown-item" href="/en-EU/issues">
+    <i class="fas fa-fw fa-map-marker-exclamation"></i>
+    <span class="position-relative d-inline-block">
+      Issues &amp; Refunds
+    </span>
+</a>
+    <a class="dropdown-item" href="/en-EU/announcements">
+      <i class="fas fa-fw fa-bullhorn"></i> Announcements
+</a>
+  <a class="dropdown-item" href="/en-EU/wallet">
+    <i class="fas fa-fw fa-piggy-bank"></i> Wallet
+</a>
+
+
+
+</div>
+
+    </div></div></div>
 <main>
   <table class="orders">
-    <tr><td><a href="/en/orders/880001">20261121-AB12</a></td><td><a href="/en/users/buyer_anna">buyer_anna</a></td><td>€51.30</td></tr>
-    <tr><td><a href="/en/orders/880002">20261122-CD34</a></td><td><a href="/en/orders/880002?print=1">Print</a></td></tr>
+    <tr><td><a href="/en-EU/orders/880001">20261121-AB12</a></td><td><a href="/en-EU/users/buyer_anna">buyer_anna</a></td><td>€51.30</td></tr>
+    <tr><td><a href="/en-EU/orders/880002">20261122-CD34</a></td><td><a href="/en-EU/orders/880002?print=1">Print</a></td></tr>
   </table>
-  <nav class="pagination"><a href="/en/orders?order_as=seller&amp;state=paid&amp;page=2">2</a></nav>
+  <nav class="pagination"><a href="/en-EU/orders?order_as=seller&amp;state=paid&amp;page=2">2</a></nav>
 </main>
 </body></html>

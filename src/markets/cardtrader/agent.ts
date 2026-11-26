@@ -8,35 +8,50 @@ import { Pacer, formAction, formData } from "../../lib/forms";
 import { errorText, sleep } from "../../lib/util";
 import type { OrderRow, OrderState } from "../../types";
 import {
-  EXPORT_POLL_ATTEMPTS,
-  EXPORT_POLL_GAP_MS,
-  IMPORT_OVERRIDES,
-  IMPORT_SETTLE_MS,
+  IMPORT_POLL_ATTEMPTS,
+  IMPORT_POLL_GAP_MS,
+  INDEX_SETTLE_MS,
+  MAX_INVENTORY_PAGES,
   MAX_ORDER_PAGES,
   MIN_REQUEST_GAP_MS,
   SEL,
   URLS,
+  editBody,
   isSignInPage,
   isSignInUrl,
-  looksLikeCsv,
   parseAlerts,
   parseCsrfToken,
-  parseExportLink,
-  parseInventoryCsv,
+  parseImportStatus,
+  parseInventoryPage,
   parseOrderPage,
   parseOrdersList,
   parseUsername,
   type CtListState,
+  type CtProductJson,
   type CtStockRow,
+  toCtStockRow,
 } from "./format";
 
 export const NOT_LOGGED_IN = "Not logged in to CardTrader: log in on www.cardtrader.com in this browser and sync again.";
 
+/** What a product is edited to (CardLedger codes). */
+export interface CtEdit {
+  quantity: number;
+  price: string | number;
+  condition: string;
+  language: string;
+  foil: boolean;
+  comment: string;
+  isProduct: boolean;
+}
+
 export type CtAgentRequest =
   | { cmd: "whoami" }
-  | { cmd: "exportInventory" }
-  | { cmd: "importInventory"; csv: string }
-  | { cmd: "removeProduct"; productId: string }
+  | { cmd: "readInventory"; settle?: boolean }
+  | { cmd: "readProducts"; productIds: string[] }
+  | { cmd: "importProducts"; gameId: number; columns: string[]; csv: string }
+  | ({ cmd: "updateProduct"; productId: string; blueprintId: number } & CtEdit)
+  | { cmd: "deleteProduct"; productId: string; blueprintId: number }
   | { cmd: "listOrders"; state: CtListState; maxPages?: number }
   | { cmd: "readOrder"; orderId: string; state: OrderState }
   | { cmd: "markShipped"; orderId: string; trackingCode: string };
@@ -84,8 +99,8 @@ export class CardTraderAgent {
     return this.page(formAction(form, pageUrl), { method: "POST", body: formData(form, overrides, fileName) });
   }
 
-  /** A same-origin JSON call as the site's own scripts make it (Rails CSRF token from the page). */
-  private async json(method: string, url: string, csrf: string | null, body?: unknown): Promise<void> {
+  /** A same-origin JSON call as the site's own scripts make it (Rails CSRF token from the page); returns its JSON. */
+  private async json<T = unknown>(method: string, url: string, csrf: string | null, body?: unknown): Promise<T | null> {
     const resp = await this.pacer.fetch(url, {
       method,
       headers: {
@@ -108,6 +123,27 @@ export class CardTraderAgent {
       }
       throw new Error(`CardTrader ${method} ${url} failed (${resp.status})${message ? `: ${message}` : ""}`);
     }
+    const text = await resp.text().catch(() => "");
+    if (!text.trim()) return null;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      if (/<html/i.test(text) && isSignInPage(new DOMParser().parseFromString(text, "text/html"))) throw new Error(NOT_LOGGED_IN);
+      throw new Error(`CardTrader ${method} ${url} did not answer JSON.`);
+    }
+  }
+
+  /** The CSRF token of the tab's page (Rails keeps it valid for the whole session), else of a fresh page. */
+  private async csrf(): Promise<string> {
+    const token = parseCsrfToken(this.deps.document) ?? parseCsrfToken((await this.page(URLS.home())).doc);
+    if (!token) throw new Error("No CSRF token on CardTrader's page.");
+    return token;
+  }
+
+  private slug(): string {
+    const slug = parseUsername(this.deps.document);
+    if (!slug) throw new Error(NOT_LOGGED_IN);
+    return slug;
   }
 
   private refusal(doc: Document, what: string): void {
@@ -119,52 +155,74 @@ export class CardTraderAgent {
     return { username: parseUsername(this.deps.document) };
   }
 
-  async exportInventory(): Promise<CtStockRow[]> {
-    const url = URLS.inventoryExport();
-    const start = await this.page(url);
-    if (looksLikeCsv(start.text, start.type)) return parseInventoryCsv(start.text);
-    let link = parseExportLink(start.doc);
-    if (!link) {
-      const posted = await this.post(this.form(start.doc, SEL.exportForm, "Inventory export", url), start.url);
-      if (looksLikeCsv(posted.text, posted.type)) return parseInventoryCsv(posted.text);
-      link = parseExportLink(posted.doc);
+  /** Every product of the seller ("My items" as JSON, page by page). The tag is not in these answers. */
+  async readInventory(settle = false): Promise<CtStockRow[]> {
+    const slug = this.slug();
+    if (settle) await this.deps.sleep(INDEX_SETTLE_MS);
+    const rows: CtStockRow[] = [];
+    for (let page = 1; page <= MAX_INVENTORY_PAGES; page++) {
+      const data = await this.json("GET", URLS.inventory(slug, page), null);
+      const { rows: found, last } = parseInventoryPage(data);
+      rows.push(...found.filter((r) => !rows.some((o) => o.market_listing_id === r.market_listing_id)));
+      if (last) break;
     }
-    for (let attempt = 0; !link && attempt < EXPORT_POLL_ATTEMPTS; attempt++) {
-      await this.deps.sleep(EXPORT_POLL_GAP_MS);
-      link = parseExportLink((await this.page(url)).doc);
-    }
-    if (!link) throw new Error(`The inventory export file did not appear on ${url}.`);
-    const file = await this.pacer.fetch(link);
-    const text = await file.text();
-    if (!file.ok || !looksLikeCsv(text, file.headers.get("content-type") ?? "")) {
-      throw new Error(`The inventory export at ${link} is not a CSV file.`);
-    }
-    return parseInventoryCsv(text);
+    return rows;
   }
 
-  async importInventory(csv: string): Promise<{ message: string | null }> {
-    const url = URLS.inventoryImport();
-    const start = await this.page(url);
-    const form = this.form(start.doc, SEL.importForm, "Inventory import", url);
-    const fileInput = form.querySelector<HTMLInputElement>(SEL.importFile);
-    if (!fileInput?.name) throw new Error(`No file field in the inventory import form on ${url}.`);
-    const result = await this.post(
-      form,
-      start.url,
-      { ...IMPORT_OVERRIDES, [fileInput.name]: new Blob([csv], { type: "text/csv" }) },
-      "cardledger-inventory.csv",
-    );
-    this.refusal(result.doc, "the import");
-    await this.deps.sleep(IMPORT_SETTLE_MS);
-    const alerts = parseAlerts(result.doc);
-    return { message: alerts.success ?? alerts.error };
+  /** Some products as they are now, with their tag (null: deleted). One request each. */
+  async readProducts(productIds: string[]): Promise<Record<string, CtStockRow | null>> {
+    const out: Record<string, CtStockRow | null> = {};
+    for (const id of productIds) {
+      const resp = await this.pacer.fetch(URLS.productJson(id), { headers: { Accept: "application/json" } });
+      if (isSignInUrl(resp.url || "")) throw new Error(NOT_LOGGED_IN);
+      if (resp.status === 404) {
+        out[id] = null;
+        continue;
+      }
+      if (!resp.ok) throw new Error(`CardTrader answered ${resp.status} for ${URLS.productJson(id)}`);
+      const data = (await resp.json()) as { product?: CtProductJson };
+      if (!data.product) throw new Error(`CardTrader's answer for product ${id} has no product.`);
+      out[id] = toCtStockRow(data.product);
+    }
+    return out;
   }
 
-  async removeProduct(productId: string): Promise<void> {
-    const url = URLS.product(productId);
-    const start = await this.page(url);
-    const result = await this.post(this.form(start.doc, SEL.productRemoveForm, "Delete product", url), start.url);
-    this.refusal(result.doc, `to delete product ${productId}`);
+  /** "Sell via spreadsheet": upload the CSV, name its columns, start the import (adding), wait until it ends. */
+  async importProducts(gameId: number, columns: string[], csv: string): Promise<{ message: string; errors: number }> {
+    const start = await this.page(URLS.importNew());
+    const upload = this.form(start.doc, SEL.importUploadForm, "Import upload", start.url);
+    const file = upload.querySelector<HTMLInputElement>(SEL.importFile);
+    if (!file?.name) throw new Error(`No file field in the import form on ${start.url}.`);
+    const data = new FormData();
+    for (const el of upload.querySelectorAll<HTMLInputElement>("input[type='hidden']")) if (el.name) data.append(el.name, el.value);
+    data.append(file.name, new Blob([csv], { type: "text/csv" }), "cardledger.csv");
+    const draft = await this.page(formAction(upload, start.url), { method: "POST", body: data });
+    const map = this.form(draft.doc, SEL.importMapForm, "Import columns", draft.url);
+    const importId = /\/product_imports\/(\d+)/.exec(map.getAttribute("action") ?? "")?.[1];
+    if (!importId) throw new Error(`CardTrader did not accept the import file: ${parseAlerts(draft.doc).error ?? draft.url}`);
+    const mapping = formData(map, { "product_import[game_id]": String(gameId), "product_import[replace_stock]": "false" });
+    mapping.delete("product_import[csv_column_names][]");
+    for (const c of columns) mapping.append("product_import[csv_column_names][]", c);
+    if (mapping.get("product_import[replace_stock]") !== "false") throw new Error("Refusing an import that would replace the inventory.");
+    let status = parseImportStatus((await this.page(formAction(map, draft.url), { method: "POST", body: mapping })).doc);
+    for (let attempt = 0; !status.done && attempt < IMPORT_POLL_ATTEMPTS; attempt++) {
+      await this.deps.sleep(IMPORT_POLL_GAP_MS);
+      status = parseImportStatus((await this.page(URLS.importStatus(importId))).doc);
+    }
+    if (!status.done) throw new Error(`CardTrader's import ${importId} did not end in time.`);
+    return { message: status.message, errors: status.errors };
+  }
+
+  /** Edit a product as the "My items" edit panel does (its current properties first, for their names). */
+  async updateProduct(productId: string, blueprintId: number, edit: CtEdit): Promise<void> {
+    const current = await this.json<{ product?: CtProductJson }>("GET", URLS.productJson(productId), null);
+    if (!current?.product) throw new Error(`Product ${productId} not found on CardTrader.`);
+    const token = await this.csrf();
+    await this.json("PATCH", URLS.productEdit(current.product.blueprint_id || blueprintId, productId), token, editBody(current.product, edit, token));
+  }
+
+  async deleteProduct(productId: string, blueprintId: number): Promise<void> {
+    await this.json("DELETE", URLS.productEdit(blueprintId, productId), await this.csrf(), null);
   }
 
   async listOrders(state: CtListState, maxPages = MAX_ORDER_PAGES): Promise<string[]> {
@@ -207,12 +265,16 @@ export class CardTraderAgent {
       switch (req.cmd) {
         case "whoami":
           return { ok: true, value: this.whoami() };
-        case "exportInventory":
-          return { ok: true, value: await this.exportInventory() };
-        case "importInventory":
-          return { ok: true, value: await this.importInventory(req.csv) };
-        case "removeProduct":
-          return { ok: true, value: await this.removeProduct(req.productId) };
+        case "readInventory":
+          return { ok: true, value: await this.readInventory(req.settle) };
+        case "readProducts":
+          return { ok: true, value: await this.readProducts(req.productIds) };
+        case "importProducts":
+          return { ok: true, value: await this.importProducts(req.gameId, req.columns, req.csv) };
+        case "updateProduct":
+          return { ok: true, value: await this.updateProduct(req.productId, req.blueprintId, req) };
+        case "deleteProduct":
+          return { ok: true, value: await this.deleteProduct(req.productId, req.blueprintId) };
         case "listOrders":
           return { ok: true, value: await this.listOrders(req.state, req.maxPages) };
         case "readOrder":
