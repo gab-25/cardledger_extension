@@ -1,6 +1,6 @@
 # `test` (typecheck and tests) runs on every push to main and on a published GitHub release; on a release only,
 # `package` then runs `npm run package` and attaches cardledger-sync-<version>.zip to the release.
-# The release tag must match package.json's version (v0.2.0 or 0.2.0 for "version": "0.2.0").
+# The extension's version is the release tag (v1.2.3 or 1.2.3), not package.json's (set only in the CI checkout).
 name: CI
 
 on:
@@ -40,17 +40,19 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Tag matches package.json version
+      - run: npm ci
+
+      - name: Version from the release tag
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          version=$(node -p "require('./package.json').version")
-          if [ "${TAG#v}" != "$version" ]; then
-            echo "::error::Release tag $TAG does not match package.json version $version"
+          version="${TAG#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag $TAG is not a version (v1.2.3 or 1.2.3)"
             exit 1
           fi
+          npm version "$version" --no-git-tag-version --allow-same-version
 
-      - run: npm ci
       - run: npm run package
 
       - name: Attach the zip to the release
