@@ -14,8 +14,11 @@ import type { MarketCode } from "./types";
 const BRIDGE_ID = "cardledger-bridge";
 let running: MarketCode | null = null;
 
+const NO_URL = "Set the CardLedger URL first (extension popup → Settings).";
+
 async function client(): Promise<CardLedgerClient> {
   const [settings, auth] = await Promise.all([getSettings(), getAuth()]);
+  if (!settings.baseUrl) throw new Error(NO_URL);
   return new CardLedgerClient({ baseUrl: settings.baseUrl, token: auth?.token });
 }
 
@@ -73,6 +76,7 @@ async function handle(req: Request): Promise<unknown> {
     }
     case "pair": {
       const settings = await getSettings();
+      if (!settings.baseUrl) throw new Error(NO_URL);
       const { token, user } = await new CardLedgerClient({ baseUrl: settings.baseUrl }).claim(req.code, req.name);
       await saveAuth({ token, user, pairedAt: new Date().toISOString() });
       return user;
@@ -118,8 +122,9 @@ chrome.runtime.onMessage.addListener((req: Request, _sender, sendResponse: (r: R
 /** (Re)register the CardLedger page bridge for the configured origin, if its host permission is granted. */
 async function registerBridge() {
   const { baseUrl } = await getSettings();
-  const pattern = hostPattern(baseUrl);
   await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_ID] }).catch(() => undefined);
+  if (!baseUrl) return; // not configured yet
+  const pattern = hostPattern(baseUrl);
   if (!(await chrome.permissions.contains({ origins: [pattern] }))) return;
   await chrome.scripting.registerContentScripts([
     { id: BRIDGE_ID, matches: [pattern], js: ["content-cardledger.js"], runAt: "document_start", persistAcrossSessions: true },

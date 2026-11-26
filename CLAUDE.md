@@ -21,9 +21,7 @@ npx vitest run test/cardtrader.test.ts            # one file
 npx vitest run test/cardtrader.test.ts -t "tag"   # one test by name
 npm run typecheck                                 # tsc --noEmit (strict)
 npm run build                                     # tsc + scripts/build.mjs -> dist/ (load unpacked)
-npm run package                                   # production build + cardledger-sync-<version>.zip (Web Store);
-                                                  # URL from package.json cardledger.productionUrl, env overrides
-VITE_CARDLEDGER_URL=https://… npm run build       # default CardLedger URL (else http://localhost:5173)
+npm run package                                   # production build + cardledger-sync-<version>.zip (Web Store)
 ```
 
 ## Rules (product decisions, don't break them)
@@ -36,8 +34,8 @@ VITE_CARDLEDGER_URL=https://… npm run build       # default CardLedger URL (el
   last runs) go in `chrome.storage.local`.
 - **One report per run**, with a fresh uuid `run_id`, even on failure (`error` + whatever was done before).
 - Host permissions: www.cardmarket.com, www.cardtrader.com, localhost/127.0.0.1 (not in the production build,
-  `build.mjs --production`, used by `npm run package`), the build's default URL; any other
-  CardLedger origin is requested at runtime from the popup's Settings (`optional_host_permissions`; the popup closes
+  `build.mjs --production`, used by `npm run package`). No build has a CardLedger URL: the user sets it in the popup
+  (which shows only Settings until then; `settings.baseUrl` is `""`), and its origin is requested at runtime from the popup's Settings (`optional_host_permissions`; the popup closes
   while Chrome asks, so the URL waits as `pendingBaseUrl` and the background applies it on `permissions.onAdded`).
 
 ## Architecture

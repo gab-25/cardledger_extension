@@ -25,8 +25,7 @@ Requirements: Node 20+ and Chrome 120+.
 
 ```bash
 npm ci
-npm run build                                                  # dist/, default CardLedger URL http://localhost:5173
-VITE_CARDLEDGER_URL=https://ledger.example.com npm run build   # or with your CardLedger's URL as default
+npm run build   # -> dist/
 ```
 
 1. Open `chrome://extensions`, turn on **Developer mode**.
@@ -38,23 +37,26 @@ After pulling changes, `npm run build` again and press the reload icon on the ex
 ### Production (Chrome Web Store)
 
 ```bash
-npm run package                                                  # -> cardledger-sync-<version>.zip
-VITE_CARDLEDGER_URL=https://staging.example.com npm run package  # another CardLedger as default (e.g. staging)
+npm run package   # -> cardledger-sync-<version>.zip
 ```
 
-`npm run package` takes the default CardLedger URL from `cardledger.productionUrl` in `package.json`
-(`https://cardledger.gabprojects.it`) unless `VITE_CARDLEDGER_URL` overrides it, refuses a non-`https` one, makes a production build (no localhost / 127.0.0.1 host permissions: a local CardLedger set in the popup's *Settings* is
-then asked for like any other address) and zips `dist/` (needs the `zip` command). Bump `version` in `package.json` for each release: the Web Store
+`npm run package` makes a production build (no localhost / 127.0.0.1 host permissions: a local CardLedger set in the
+popup's *Settings* is then asked for like any other address) and zips `dist/` (needs the `zip` command). No build
+contains a CardLedger URL: each user sets theirs in the popup (see [Set up](#set-up)). Bump `version` in `package.json` for each release: the Web Store
 rejects an upload with a version it already has. Upload the zip in the
 [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), visibility *Unlisted* (only
 people with the link) or *Private* (your Google Workspace domain); installed copies update automatically.
 
+**GitHub release**: publishing a release on GitHub runs `.github/workflows/release.yml`, which runs the tests and
+`npm run package` and attaches the zip to the release. The tag must match `package.json`'s version (`v0.2.0` or
+`0.2.0` for `"version": "0.2.0"`), otherwise the workflow fails.
+
 ## Set up
 
-1. **CardLedger URL**: in the popup, *Settings* (also *change* under the pairing form). Enter the address you
-   open CardLedger at (e.g. `https://ledger.example.com`; for development `http://localhost:5173`). A new address
+1. **CardLedger URL**: the popup opens on *Settings* until it is set (later: the gear icon, or *Change* under the
+   pairing form). Enter the address you open CardLedger at (e.g. `https://ledger.example.com`; for development `http://localhost:5173`). A new address
    asks for permission to access it (the popup closes while Chrome asks; the address is saved once you allow it);
-   localhost works out of the box. Changing it unpairs the extension. *Unpair* is in *Settings* too.
+   localhost works out of the box in a development build. Changing it unpairs the extension. *Unpair* is in *Settings* too.
 2. **Pair**: in CardLedger, open *Account → Browser extension* and create a pairing code (valid 10 minutes). Open
    the extension popup, type the code, press **Pair**. The extension stores the token it receives in
    `chrome.storage.local`; revoke it from the same Account page at any time (the extension then asks to pair again).

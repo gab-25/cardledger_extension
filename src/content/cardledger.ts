@@ -50,7 +50,7 @@ export function installBridge({ win, send }: BridgeDeps): () => void {
     } catch {
       return; // extension reloading: stay silent, the page will think it's absent
     }
-    if (new URL(ping.baseUrl).origin !== origin) return; // not the configured CardLedger
+    if (!ping.baseUrl || new URL(ping.baseUrl).origin !== origin) return; // not the configured CardLedger
 
     if (data.type === "cardledger:ping") {
       reply({ type: "cardledger:pong", id, version: ping.version, paired: ping.paired });
