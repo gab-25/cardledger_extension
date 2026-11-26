@@ -2,6 +2,7 @@
 //   1. the popup page and the background service worker (ES module);
 //   2. each content script as a self-contained IIFE (content scripts can't be ES modules);
 //   3. manifest.json, with the version of package.json and the default CardLedger URL's host permission.
+// `--production` (used by `npm run package`): the manifest gets no localhost / 127.0.0.1 host permissions.
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
@@ -10,6 +11,7 @@ import { manifest } from "./manifest.mjs";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const src = `${root}src`;
 const outDir = `${root}dist`;
+const production = process.argv.includes("--production");
 const define = {
   "import.meta.env.VITE_CARDLEDGER_URL": JSON.stringify(process.env.VITE_CARDLEDGER_URL || "http://localhost:5173"),
 };
@@ -59,5 +61,5 @@ for (const [name, entry] of Object.entries(contentScripts)) {
 }
 
 const pkg = JSON.parse(await readFile(`${root}package.json`, "utf8"));
-await writeFile(`${outDir}/manifest.json`, JSON.stringify(manifest(pkg.version, define["import.meta.env.VITE_CARDLEDGER_URL"]), null, 2));
-console.log(`Built CardLedger extension ${pkg.version} into dist/`);
+await writeFile(`${outDir}/manifest.json`, JSON.stringify(manifest(pkg.version, define["import.meta.env.VITE_CARDLEDGER_URL"], { production }), null, 2));
+console.log(`Built CardLedger extension ${pkg.version}${production ? " (production)" : ""} into dist/`);

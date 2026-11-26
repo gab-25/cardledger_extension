@@ -4,8 +4,12 @@
   "private": true,
   "type": "module",
   "description": "Chrome extension that syncs CardLedger with Cardmarket and CardTrader from the user's browser.",
+  "cardledger": {
+    "productionUrl": "https://cardledger.gabprojects.it"
+  },
   "scripts": {
     "build": "tsc --noEmit && node scripts/build.mjs",
+    "package": "node scripts/package.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

@@ -35,6 +35,20 @@ VITE_CARDLEDGER_URL=https://ledger.example.com npm run build   # or with your Ca
 
 After pulling changes, `npm run build` again and press the reload icon on the extension's card.
 
+### Production (Chrome Web Store)
+
+```bash
+npm run package                                                  # -> cardledger-sync-<version>.zip
+VITE_CARDLEDGER_URL=https://staging.example.com npm run package  # another CardLedger as default (e.g. staging)
+```
+
+`npm run package` takes the default CardLedger URL from `cardledger.productionUrl` in `package.json`
+(`https://cardledger.gabprojects.it`) unless `VITE_CARDLEDGER_URL` overrides it, refuses a non-`https` one, makes a production build (no localhost / 127.0.0.1 host permissions: a local CardLedger set in the popup's *Settings* is
+then asked for like any other address) and zips `dist/` (needs the `zip` command). Bump `version` in `package.json` for each release: the Web Store
+rejects an upload with a version it already has. Upload the zip in the
+[Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), visibility *Unlisted* (only
+people with the link) or *Private* (your Google Workspace domain); installed copies update automatically.
+
 ## Set up
 
 1. **CardLedger URL**: in the popup, *Settings* (also *change* under the pairing form). Enter the address you

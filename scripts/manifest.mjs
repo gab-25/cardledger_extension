@@ -8,13 +8,16 @@ export function hostPattern(url) {
 
 const ICONS = { 16: "icons/icon-16.png", 32: "icons/icon-32.png", 48: "icons/icon-48.png", 128: "icons/icon-128.png" };
 
-export function manifest(version, defaultUrlJson) {
+/**
+ * `production`: no localhost / 127.0.0.1 host permissions (a dev CardLedger is then requested at runtime from the
+ * popup's Settings, like any other origin).
+ */
+export function manifest(version, defaultUrlJson, { production = false } = {}) {
   const defaultUrl = JSON.parse(defaultUrlJson);
   const hosts = new Set([
     "https://www.cardmarket.com/*",
     "https://www.cardtrader.com/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*",
+    ...(production ? [] : ["http://localhost/*", "http://127.0.0.1/*"]),
     hostPattern(defaultUrl),
   ]);
   return {
