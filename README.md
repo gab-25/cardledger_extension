@@ -47,10 +47,6 @@ rejects an upload with a version it already has. Upload the zip in the
 [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), visibility *Unlisted* (only
 people with the link) or *Private* (your Google Workspace domain); installed copies update automatically.
 
-**GitHub release**: publishing a release on GitHub runs `.github/workflows/release.yml`, which runs the tests and
-`npm run package` and attaches the zip to the release. The tag must match `package.json`'s version (`v0.2.0` or
-`0.2.0` for `"version": "0.2.0"`), otherwise the workflow fails.
-
 ## Set up
 
 1. **CardLedger URL**: the popup opens on *Settings* until it is set (later: the gear icon, or *Change* under the
