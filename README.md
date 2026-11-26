@@ -42,15 +42,14 @@ npm run package   # -> cardledger-sync-<version>.zip
 
 `npm run package` makes a production build (no localhost / 127.0.0.1 host permissions: a local CardLedger set in the
 popup's *Settings* is then asked for like any other address) and zips `dist/` (needs the `zip` command). No build
-contains a CardLedger URL: each user sets theirs in the popup (see [Set up](#set-up)). Locally the version is `package.json`'s; a
-GitHub release takes it from its tag (below). Each release needs a new version: the Web Store rejects an upload with a
-version it already has. Upload the zip in the
+contains a CardLedger URL: each user sets theirs in the popup (see [Set up](#set-up)). Bump `version` in `package.json` for each release: the Web Store
+rejects an upload with a version it already has. Upload the zip in the
 [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole), visibility *Unlisted* (only
 people with the link) or *Private* (your Google Workspace domain); installed copies update automatically.
 
 **CI** (`.github/workflows/ci.yml`): every push to `main` runs the `test` job (typecheck and tests). Publishing a
-release on GitHub runs `test`, then the `package` job (`npm run package`, the zip attached to the release). The tag is the extension's version
-(`v0.2.0` or `0.2.0` builds `0.2.0`; anything else fails the workflow); `package.json` is not changed in the repo.
+release on GitHub runs `test`, then the `package` job (`npm run package`, the zip attached to the release). The version is `package.json`'s; the
+tag only names the release.
 
 ## Set up
 
