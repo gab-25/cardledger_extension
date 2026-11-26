@@ -101,8 +101,7 @@ function tabBanner(state: State) {
   }
   return h("div", { class: "banner info" },
     h("b", {}, "Sync runs in the market's own tab"),
-    h("span", {}, "Open Cardmarket or CardTrader, log in there, then open this popup again."),
-    h("div", { class: "row" }, ...MARKETS.map((code) => h("button", { class: "open", onclick: () => openMarket(code) }, `Open ${MARKET_NAMES[code]}`))));
+    h("span", {}, "Open a market below, log in there, then open this popup again."));
 }
 
 function runAlert(run: RunSummary) {
@@ -162,11 +161,10 @@ function marketCard(state: State, code: MarketCode) {
       `${plural(pending, "change")} to push · last sync ${when(m?.last_sync)}`,
       run ? h("span", { class: run.ok ? "good" : "bad" }, run.ok ? " OK" : " failed") : null),
     run && !run.ok ? runAlert(run) : null,
-    button,
-    activeMarket
-      ? h("span", { class: "hint" }, `Sync it from a ${MARKET_NAMES[code]} tab. `,
-          h("button", { class: "link", onclick: () => openMarket(code) }, `Open ${MARKET_NAMES[code]}`))
-      : null);
+    // Not this tab's market: open it (sync from there), next to its disabled Sync.
+    h("div", { class: "pair" },
+      h("button", { class: "open", onclick: () => openMarket(code) }, `Open ${MARKET_NAMES[code]}`),
+      h("button", { disabled: true, title: `Sync ${MARKET_NAMES[code]} from its own tab` }, "Sync")));
 }
 
 function mainView(state: State) {
