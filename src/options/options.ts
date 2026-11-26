@@ -1,25 +1,16 @@
-// Options: the CardLedger URL (asking for its host permission when it's a new origin) and the Cardmarket games.
+// Options: the CardLedger URL (asking for its host permission when it's a new origin). The games to read on each
+// market are decided by CardLedger (the plan's `games`).
 
 import { normalizeBaseUrl } from "../api/cardledger";
-import { CM_GAMES } from "../markets/cardmarket/format";
 import { getSettings, hostPattern, saveAuth, saveSettings } from "../storage";
-import { h } from "../ui/dom";
 
 const form = document.getElementById("form") as HTMLFormElement;
 const url = document.getElementById("url") as HTMLInputElement;
-const games = document.getElementById("games")!;
 const saved = document.getElementById("saved")!;
 
 async function load() {
   const settings = await getSettings();
   url.value = settings.baseUrl;
-  games.replaceChildren(
-    ...Object.entries(CM_GAMES).map(([slug, name]) =>
-      h("label", { class: "small" },
-        h("input", { type: "checkbox", name: "game", value: slug, checked: settings.cmGames.includes(slug) }),
-        ` ${name}`),
-    ),
-  );
 }
 
 form.addEventListener("submit", async (e) => {
@@ -41,9 +32,8 @@ form.addEventListener("submit", async (e) => {
     saved.className = "small err";
     return;
   }
-  const cmGames = [...games.querySelectorAll<HTMLInputElement>("input[name=game]:checked")].map((i) => i.value);
   const before = await getSettings();
-  await saveSettings({ baseUrl, cmGames });
+  await saveSettings({ baseUrl });
   if (before.baseUrl !== baseUrl) await saveAuth(null); // the token belongs to the previous CardLedger
   saved.textContent = before.baseUrl !== baseUrl ? "Saved. Pair again from the extension popup." : "Saved.";
   saved.className = "small ok";

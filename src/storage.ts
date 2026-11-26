@@ -8,8 +8,6 @@ export const DEFAULT_URL: string = import.meta.env.VITE_CARDLEDGER_URL || "http:
 
 export interface Settings {
   baseUrl: string;
-  /** CardLedger game slugs whose Cardmarket stock and orders are read on every Cardmarket sync. */
-  cmGames: string[];
 }
 
 export interface Auth {
@@ -24,7 +22,7 @@ export interface Stored {
   lastRuns?: Partial<Record<MarketCode, RunSummary>>;
 }
 
-export const DEFAULT_SETTINGS: Settings = { baseUrl: DEFAULT_URL, cmGames: ["mtg"] };
+export const DEFAULT_SETTINGS: Settings = { baseUrl: DEFAULT_URL };
 
 async function get<K extends keyof Stored>(key: K): Promise<Stored[K]> {
   const data = (await chrome.storage.local.get(key)) as Stored;

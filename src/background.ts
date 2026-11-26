@@ -20,7 +20,6 @@ async function client(): Promise<CardLedgerClient> {
 }
 
 async function deps(): Promise<SyncDeps> {
-  const settings = await getSettings();
   return {
     api: await client(),
     cardtrader: async () => {
@@ -33,7 +32,6 @@ async function deps(): Promise<SyncDeps> {
       if (tab?.id === undefined) throw new Error(NO_TAB);
       return connectAgent(tab.id);
     },
-    cmGames: settings.cmGames,
   };
 }
 

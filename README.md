@@ -43,15 +43,15 @@ After pulling changes, `npm run build` again and press the reload icon on the ex
 2. **Pair**: in CardLedger, open *Account → Browser extension* and create a pairing code (valid 10 minutes). Open
    the extension popup, type the code, press **Pair**. The extension stores the token it receives in
    `chrome.storage.local`; revoke it from the same Account page at any time (the extension then asks to pair again).
-3. **CardTrader**: log in on www.cardtrader.com in a normal tab (the popup's *Open CardTrader* opens one) and leave
-   it open while syncing.
-4. **Cardmarket**: log in on cardmarket.com in a normal tab (*Open Cardmarket*) and leave it open while syncing. In the options, tick
-   the games whose Cardmarket stock and orders you want read on each sync (games with changes to push are always
-   included).
+3. **CardTrader**: log in on www.cardtrader.com in a normal tab (the popup's *Open CardTrader* opens one).
+4. **Cardmarket**: log in on www.cardmarket.com in a normal tab (*Open Cardmarket*). The games whose Cardmarket stock
+   and orders are read on each sync are decided by CardLedger: the games you have Cardmarket listings of (the
+   plan's `games`).
 
 ## Use
 
-- **From the popup**: *Sync Cardmarket* / *Sync CardTrader*. The popup shows each market's status and pending
+- **From the popup**, opened while on the market's own tab: *Sync Cardmarket* is enabled only on www.cardmarket.com,
+  *Sync CardTrader* only on www.cardtrader.com. The popup shows each market's status and pending
   changes (from CardLedger), and the last run: changes applied, listings and orders read, errors per listing.
 - **From CardLedger**: the Sync buttons in CardLedger ask the extension through the page bridge below; without the
   extension, CardLedger shows "Install the CardLedger extension".

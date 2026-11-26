@@ -18,7 +18,7 @@ export const NOT_LOGGED_IN = "Not logged in to Cardmarket: log in on cardmarket.
 export interface CardmarketRunInput {
   agent: AgentCall;
   plan: Plan;
-  /** Games whose stock and orders are read even with nothing to push (from the options). */
+  /** Games whose stock and orders are read even with nothing to push (the plan's `games`, decided by CardLedger). */
   games: string[];
 }
 

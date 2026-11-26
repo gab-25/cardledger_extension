@@ -1,5 +1,6 @@
 // Popup: pairing, status per market, the Sync buttons and the last run of each market.
 
+import { marketOfUrl } from "../markets/hosts";
 import { send, type State } from "../messages";
 import type { RunSummary } from "../report";
 import { MARKETS, MARKET_NAMES, type MarketCode } from "../types";
@@ -8,6 +9,18 @@ import { h, when } from "../ui/dom";
 const app = document.getElementById("app")!;
 let busy: MarketCode | null = null;
 let message: { text: string; tone: "ok" | "err" } | null = null;
+/** The market whose site is the active tab: only its Sync button is enabled. */
+let activeMarket: MarketCode | null = null;
+
+/** The URL of a market tab is visible thanks to the host permissions (other tabs' URLs are hidden: null). */
+async function readActiveMarket(): Promise<MarketCode | null> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return marketOfUrl(tab?.url);
+  } catch {
+    return null;
+  }
+}
 
 function runView(run: RunSummary | undefined) {
   if (!run) return h("p", { class: "muted small" }, "No sync yet from this browser.");
@@ -34,7 +47,8 @@ function runView(run: RunSummary | undefined) {
 function marketCard(state: State, code: MarketCode) {
   const m = state.status?.markets.find((x) => x.code === code);
   const pending = state.status?.pending?.[code] ?? 0;
-  const disabled = !!busy || !!state.running;
+  const here = activeMarket === code;
+  const disabled = !!busy || !!state.running || !here;
   const label = busy === code || state.running === code ? "Syncing…" : `Sync ${MARKET_NAMES[code]}`;
   return h(
     "div",
@@ -46,6 +60,7 @@ function marketCard(state: State, code: MarketCode) {
     ),
     h("p", { class: "muted small" }, `Last sync ${when(m?.last_sync)} · ${pending} change${pending === 1 ? "" : "s"} to push`),
     h("p", {}, h("button", { class: "primary", disabled, onclick: () => void sync(code) }, label)),
+    here ? null : h("p", { class: "muted small" }, `Open a ${MARKET_NAMES[code]} tab (logged in) and sync from there.`),
     runView(state.lastRuns[code]),
   );
 }
@@ -81,7 +96,7 @@ function render(state: State) {
     h("p", { class: "small" }, `Signed in as `, h("b", {}, user?.full_name || user?.username || "?"), ` on ${new URL(state.baseUrl).host}`),
     state.statusError ? h("p", { class: "err small" }, state.statusError) : "",
     ...MARKETS.map((code) => marketCard(state, code)),
-    h("p", { class: "muted small" }, "Cardmarket and CardTrader sync through your open cardmarket.com / cardtrader.com tabs (be logged in there)."),
+    h("p", { class: "muted small" }, "Each market syncs from its own tab: open the extension while on www.cardmarket.com or www.cardtrader.com (logged in)."),
     h("div", { class: "gap" },
       h("button", { onclick: () => void chrome.tabs.create({ url: "https://www.cardmarket.com/" }) }, "Open Cardmarket"),
       h("button", { onclick: () => void chrome.tabs.create({ url: "https://www.cardtrader.com/" }) }, "Open CardTrader"),
@@ -130,4 +145,7 @@ async function sync(market: MarketCode) {
   await refresh();
 }
 
-void refresh();
+void readActiveMarket().then((market) => {
+  activeMarket = market;
+  void refresh();
+});
