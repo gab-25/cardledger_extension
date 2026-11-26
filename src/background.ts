@@ -1,5 +1,5 @@
 // Service worker: the only part that talks to CardLedger and to the market tabs (Cardmarket, CardTrader). It reacts to
-// messages (popup, options, CardLedger page bridge) and nothing else: no alarms, no polling, no work on startup besides
+// messages (popup, CardLedger page bridge) and nothing else: no alarms, no polling, no work on startup besides
 // registering the page bridge for the configured CardLedger origin.
 
 import { ApiError, CardLedgerClient } from "./api/cardledger";
@@ -7,7 +7,7 @@ import { errorText } from "./lib/util";
 import { connectAgent, findCardmarketTab, NO_TAB } from "./markets/cardmarket/tab";
 import { connectAgent as connectCtAgent, findCardTraderTab, NO_TAB as NO_CT_TAB } from "./markets/cardtrader/tab";
 import type { Request, Response, State } from "./messages";
-import { getAuth, getLastRuns, getSettings, hostPattern, saveAuth, saveLastRun } from "./storage";
+import { applyBaseUrl, getAuth, getLastRuns, getPendingBaseUrl, getSettings, hostPattern, saveAuth, saveLastRun } from "./storage";
 import { runShip, runSync, type SyncDeps } from "./sync";
 import type { MarketCode } from "./types";
 
@@ -128,7 +128,15 @@ async function registerBridge() {
 
 chrome.runtime.onInstalled.addListener(() => void registerBridge());
 chrome.runtime.onStartup.addListener(() => void registerBridge());
-chrome.permissions.onAdded.addListener(() => void registerBridge());
+// A CardLedger URL saved in the popup's settings waits for its host permission: the popup closes while Chrome asks,
+// so it is applied here once granted.
+chrome.permissions.onAdded.addListener((added) => {
+  void (async () => {
+    const pending = await getPendingBaseUrl();
+    if (pending && added.origins?.includes(hostPattern(pending))) await applyBaseUrl(pending);
+    await registerBridge();
+  })();
+});
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.settings) void registerBridge();
 });

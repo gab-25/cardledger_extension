@@ -9,7 +9,7 @@
 //      tracking_code?, game?}                                    market_order_id, ok, error?}
 //
 // Only messages from the page itself (same window, same origin) are answered, and only when the page's origin is the
-// CardLedger URL set in the extension's options. The UI treats "no pong within 1 s" as "extension not installed".
+// CardLedger URL set in the extension's settings. The UI treats "no pong within 1 s" as "extension not installed".
 
 import type { Ping, Request } from "../messages";
 import type { RunSummary } from "../report";

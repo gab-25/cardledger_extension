@@ -37,9 +37,10 @@ After pulling changes, `npm run build` again and press the reload icon on the ex
 
 ## Set up
 
-1. **CardLedger URL**: right-click the extension icon → *Options* (or *Options* in the popup). Enter the address you
+1. **CardLedger URL**: in the popup, *Settings* (also *change* under the pairing form). Enter the address you
    open CardLedger at (e.g. `https://ledger.example.com`; for development `http://localhost:5173`). A new address
-   asks for permission to access it; localhost works out of the box. Changing it unpairs the extension.
+   asks for permission to access it (the popup closes while Chrome asks; the address is saved once you allow it);
+   localhost works out of the box. Changing it unpairs the extension. *Unpair* is in *Settings* too.
 2. **Pair**: in CardLedger, open *Account → Browser extension* and create a pairing code (valid 10 minutes). Open
    the extension popup, type the code, press **Pair**. The extension stores the token it receives in
    `chrome.storage.local`; revoke it from the same Account page at any time (the extension then asks to pair again).

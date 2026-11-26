@@ -18,6 +18,8 @@ export interface Auth {
 
 export interface Stored {
   settings?: Partial<Settings>;
+  /** A CardLedger URL waiting for its host permission (the popup closes while Chrome asks for it). */
+  pendingBaseUrl?: string;
   auth?: Auth;
   lastRuns?: Partial<Record<MarketCode, RunSummary>>;
 }
@@ -37,6 +39,27 @@ export async function saveSettings(settings: Partial<Settings>): Promise<Setting
   const next = { ...(await getSettings()), ...settings };
   await chrome.storage.local.set({ settings: next });
   return next;
+}
+
+/**
+ * Make baseUrl the CardLedger URL. The token belongs to the previous CardLedger: a change unpairs.
+ * Returns whether the URL changed.
+ */
+export async function applyBaseUrl(baseUrl: string): Promise<boolean> {
+  const before = await getSettings();
+  await saveSettings({ baseUrl });
+  await chrome.storage.local.remove("pendingBaseUrl");
+  if (before.baseUrl === baseUrl) return false;
+  await saveAuth(null);
+  return true;
+}
+
+export async function setPendingBaseUrl(baseUrl: string): Promise<void> {
+  await chrome.storage.local.set({ pendingBaseUrl: baseUrl });
+}
+
+export async function getPendingBaseUrl(): Promise<string | null> {
+  return (await get("pendingBaseUrl")) ?? null;
 }
 
 export async function getAuth(): Promise<Auth | null> {

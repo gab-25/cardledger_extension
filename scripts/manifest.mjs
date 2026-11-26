@@ -26,13 +26,12 @@ export function manifest(version, defaultUrlJson) {
     icons: ICONS,
     minimum_chrome_version: "120",
     action: { default_title: "CardLedger Sync", default_popup: "popup/index.html", default_icon: ICONS },
-    options_page: "options/index.html",
     background: { service_worker: "background.js", type: "module" },
     // storage: token and settings; scripting: the Cardmarket and CardTrader agents and the CardLedger page bridge (registered for
     // the configured CardLedger origin at runtime). No alarms: nothing runs unless the user asks.
     permissions: ["storage", "scripting"],
     host_permissions: [...hosts],
-    // A CardLedger served elsewhere: its origin is requested from the options page when saved.
+    // A CardLedger served elsewhere: its origin is requested from the popup's Settings when saved.
     optional_host_permissions: ["https://*/*", "http://*/*"],
   };
 }

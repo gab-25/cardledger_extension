@@ -34,7 +34,8 @@ VITE_CARDLEDGER_URL=https://… npm run build       # default CardLedger URL (el
   last runs) go in `chrome.storage.local`.
 - **One report per run**, with a fresh uuid `run_id`, even on failure (`error` + whatever was done before).
 - Host permissions: www.cardmarket.com, www.cardtrader.com, localhost/127.0.0.1, the build's default URL; any other
-  CardLedger origin is requested at runtime from the options page (`optional_host_permissions`).
+  CardLedger origin is requested at runtime from the popup's Settings (`optional_host_permissions`; the popup closes
+  while Chrome asks, so the URL waits as `pendingBaseUrl` and the background applies it on `permissions.onAdded`).
 
 ## Architecture
 
@@ -73,7 +74,7 @@ VITE_CARDLEDGER_URL=https://… npm run build       # default CardLedger URL (el
   `formData`/`formAction` (posting a site's own forms) and `Pacer`.
 - `src/content/cardledger.ts`: postMessage bridge on the CardLedger page (`cardledger:ping|sync|ship` →
   `…pong|sync-result|ship-result`); answers only same-window/same-origin messages on the configured origin.
-- `src/popup/`, `src/options/`: plain TS + DOM (`src/ui/dom.ts` `h()` helper, text never parsed as HTML),
+- `src/popup/` (main view and Settings: CardLedger URL, unpair; no options page): plain TS + DOM (`src/ui/dom.ts` `h()` helper, text never parsed as HTML),
   `src/ui/style.css` light/dark.
 - Build (`scripts/build.mjs`): one Vite build for pages + background (ES module), one IIFE build per content script
   (`content-cardledger`, `cardmarket-agent`, `cardtrader-agent`),

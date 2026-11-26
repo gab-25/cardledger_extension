@@ -1,5 +1,5 @@
 // Builds the extension into dist/ (load it unpacked from chrome://extensions):
-//   1. popup + options pages and the background service worker (ES module);
+//   1. the popup page and the background service worker (ES module);
 //   2. each content script as a self-contained IIFE (content scripts can't be ES modules);
 //   3. manifest.json, with the version of package.json and the default CardLedger URL's host permission.
 import { readFile, writeFile } from "node:fs/promises";
@@ -28,7 +28,6 @@ await build({
     rollupOptions: {
       input: {
         popup: `${src}/popup/index.html`,
-        options: `${src}/options/index.html`,
         background: `${src}/background.ts`,
       },
       output: {
